@@ -72,9 +72,12 @@
       [senderType]="chat.senderType(m.sender_id)"
       [mode]="chat.activeTheme()"
       [receipt]="chat.receipts().get(m.id) ?? null"
+      [myType]="chat.myType()"
+      [reactions]="chat.reactionViews().get(m.id) ?? noReactions"
       (react)="onReact($event)"
       (purr)="chat.purr()"
       (retry)="onRetry($event)"
+      (reactWith)="onReactWith($event)"
     />
     } @empty {
     <div class="empty">

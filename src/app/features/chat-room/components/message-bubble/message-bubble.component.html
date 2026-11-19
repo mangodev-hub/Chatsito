@@ -6,13 +6,14 @@
   [class.revealed]="revealed()"
   [attr.aria-label]="
     message().is_secret
-      ? 'Mensaje secreto. Mantén presionado para revelarlo. Doble toque para posar tu gatito.'
-      : 'Mensaje. Doble toque para posar tu gatito.'
+      ? 'Mensaje secreto. Mantén presionado para revelarlo y reaccionar. Doble toque para posar tu gatito.'
+      : 'Mensaje. Mantén presionado (o tecla R) para reaccionar. Doble toque para posar tu gatito.'
   "
   (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
   (pointerup)="onPointerUp()"
-  (pointercancel)="hide()"
-  (pointerleave)="hide()"
+  (pointercancel)="onPointerCancel()"
+  (pointerleave)="onPointerCancel()"
   (contextmenu)="$event.preventDefault()"
   (keydown)="onKey($event)"
 >
@@ -46,4 +47,31 @@
       </span>
     }
   </span>
+
+  @if (reactions().length) {
+    <span class="reactions" role="img" [attr.aria-label]="'Reacciones: ' + reactionsLabel()">
+      @for (r of reactions(); track r.userId) {
+        <app-cat-face class="reaction-face" [type]="r.catType" [reaction]="r.reaction" [size]="22" />
+      }
+    </span>
+  }
 </div>
+
+@if (pickerOpen()) {
+  <div class="picker" [class.below]="pickerBelow()" role="toolbar" aria-label="Reaccionar con tu gatito">
+    @for (option of reactionOptions; track option.key; let i = $index) {
+      <button
+        type="button"
+        class="picker-option"
+        [class.selected]="myReaction() === option.key"
+        [style.--i]="i"
+        [attr.aria-label]="option.label"
+        [attr.aria-pressed]="myReaction() === option.key"
+        [title]="option.label"
+        (click)="pick(option.key)"
+      >
+        <app-cat-face [type]="myType()" [reaction]="option.key" [size]="34" />
+      </button>
+    }
+  </div>
+}

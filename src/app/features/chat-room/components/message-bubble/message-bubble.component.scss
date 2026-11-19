@@ -193,3 +193,142 @@
   border-style: dashed;
   cursor: pointer;
 }
+
+// ---------- reacciones con caritas de gatito
+:host {
+  position: relative;
+}
+
+:host(.has-reactions) {
+  padding-bottom: 18px;
+}
+
+:host(.picking) {
+  z-index: 20;
+}
+
+.reactions {
+  position: absolute;
+  bottom: -15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 5px;
+  border: var(--sketch);
+  border-radius: 999px;
+  background: var(--day-surface);
+  box-shadow: 0 2px 0 var(--border-sketch);
+  pointer-events: none;
+  animation: reaction-pop 320ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+
+  :host(.mine) & {
+    left: 10px;
+  }
+
+  :host(.theirs) & {
+    right: 10px;
+  }
+}
+
+.picker {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  z-index: 30;
+  display: flex;
+  gap: 2px;
+  padding: 5px 7px;
+  border: var(--sketch);
+  border-radius: 999px;
+  background: var(--day-surface);
+  box-shadow: var(--shadow-hard);
+  animation: picker-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+
+  :host(.mine) & {
+    right: 0;
+    transform-origin: 85% 100%;
+  }
+
+  :host(.theirs) & {
+    left: 0;
+    transform-origin: 15% 100%;
+  }
+
+  &.below {
+    top: calc(100% - 4px);
+    bottom: auto;
+  }
+}
+
+.picker-option {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: face-in 260ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+
+  &:active {
+    transform: scale(0.88);
+  }
+
+  &.selected {
+    background: var(--bg-accent-soft, #f5e1b0);
+    box-shadow: inset 0 0 0 1.5px var(--border-sketch);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--border-sketch);
+    outline-offset: 1px;
+  }
+}
+
+@keyframes picker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes face-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes reaction-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reactions,
+  .picker,
+  .picker-option {
+    animation: none;
+  }
+}

@@ -3,6 +3,42 @@ export type CatState = 'idle' | 'typing' | 'happy' | 'poke' | 'sleeping' | 'mess
 export type Emotion = 'neutral' | 'happy' | 'love' | 'alert';
 export type TypingSpeed = 'normal' | 'fast';
 export type ThemeMode = 'day' | 'night' | 'eclipse';
+export type Reaction = 'love' | 'laugh' | 'happy' | 'wow' | 'sad' | 'angry';
+
+/** Expresiones de los gatitos para reaccionar a un mensaje (en el orden del selector). */
+export const REACTIONS: readonly { key: Reaction; label: string }[] = [
+  { key: 'love', label: 'Me encanta' },
+  { key: 'laugh', label: 'Jajaja' },
+  { key: 'happy', label: 'Feliz' },
+  { key: 'wow', label: '¡Wow!' },
+  { key: 'sad', label: 'Triste' },
+  { key: 'angry', label: 'Grr' },
+];
+
+export function isReaction(value: unknown): value is Reaction {
+  return REACTIONS.some((r) => r.key === value);
+}
+
+/** Reacción ya resuelta para pintar: qué gatito y qué cara. */
+export interface ReactionView {
+  userId: string;
+  catType: CatType;
+  reaction: Reaction;
+  mine: boolean;
+}
+
+/** Cómo responde en el balcón el gatito de quien reacciona. */
+export function catStateForReaction(reaction: Reaction): CatState {
+  switch (reaction) {
+    case 'wow':
+    case 'sad': // orejas hacia atrás
+      return 'poke';
+    case 'angry':
+      return 'angry';
+    default:
+      return 'happy';
+  }
+}
 
 export interface Profile {
   id: string;

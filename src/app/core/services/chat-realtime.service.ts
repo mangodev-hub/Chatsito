@@ -13,9 +13,13 @@ import {
   type ThemeMode,
   type TypingSpeed,
   type Emotion,
+  type Reaction,
+  type ReactionView,
   CAT_META,
   detectEmotion,
   isOneShot,
+  catStateForReaction,
+  isReaction,
   reactionFor,
 } from '../models/chat.models';
 
@@ -62,6 +66,8 @@ export class ChatRealtimeService {
   readonly connection = signal<Connection>('connecting');
   /** Hasta dónde leyó el compañero (servidor, `room_reads`). */
   readonly partnerReadAt = signal<string | null>(null);
+  /** Reacciones: mensaje → (usuario → expresión). */
+  private readonly reactionRows = signal<ReadonlyMap<string, ReadonlyMap<string, Reaction>>>(new Map());
   readonly isPartnerOnline = signal(false);
   readonly partnerTypingSpeed = signal<TypingSpeed | null>(null);
   readonly myTypingSpeed = signal<TypingSpeed>('normal');
@@ -108,6 +114,21 @@ export class ChatRealtimeService {
     return map;
   });
   /** Tipo de gatito del último emisor: orienta el degradado del modo Eclipse. */
+  /** Reacciones listas para pintar en cada burbuja (con el gatito de quien reaccionó). */
+  readonly reactionViews = computed<ReadonlyMap<string, readonly ReactionView[]>>(() => {
+    const meId = this.me()?.id;
+    const out = new Map<string, ReactionView[]>();
+    for (const [messageId, byUser] of this.reactionRows()) {
+      const list: ReactionView[] = [];
+      for (const [userId, reaction] of byUser) {
+        const catType = this.senderType(userId);
+        if (catType) list.push({ userId, catType, reaction, mine: userId === meId });
+      }
+      list.sort((a, b) => Number(a.mine) - Number(b.mine));
+      if (list.length) out.set(messageId, list);
+    }
+    return out;
+  });
   readonly lastSenderType = computed<CatType | null>(() => {
     const list = this.messages();
     const last = list[list.length - 1];
@@ -123,6 +144,8 @@ export class ChatRealtimeService {
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private markReadTimer: ReturnType<typeof setTimeout> | null = null;
   private myReadAt: string | null = null;
+  /** Última `updated_at` de reacciones vista: para recuperar las que llegaron sin conexión. */
+  private reactionsSyncedAt: string | null = null;
   private flightSeq = 0;
   private lastTypingSent = 0;
   private typingTrailing: ReturnType<typeof setTimeout> | null = null;
@@ -190,6 +213,8 @@ export class ChatRealtimeService {
     this.hasOlder.set(false);
     this.partner.set(null);
     this.partnerReadAt.set(null);
+    this.reactionRows.set(new Map());
+    this.reactionsSyncedAt = null;
     this.myReadAt = null;
     this.room.set(null);
     this.isPartnerOnline.set(false);
@@ -234,6 +259,11 @@ export class ChatRealtimeService {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'room_reads', filter: `room_id=eq.${room.id}` },
         (p) => this.applyRead(p.new as Readonly<Record<string, unknown>>),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'message_reactions', filter: `room_id=eq.${room.id}` },
+        (p) => this.applyReaction(p.new as Readonly<Record<string, unknown>>, true),
       )
       .subscribe((status) => {
         if (gen !== this.generation || channel !== this.channel) return;
@@ -539,6 +569,7 @@ export class ChatRealtimeService {
       .limit(PAGE_SIZE);
     if (error) throw error;
     this.messages.set(data.map((row) => SupabaseService.toMessage(row)).reverse());
+    void this.loadReactions(data.map((row) => row.id));
     this.hasOlder.set(data.length === PAGE_SIZE);
   }
 
@@ -561,6 +592,7 @@ export class ChatRealtimeService {
       if (gen !== this.generation) return 0;
       const older = data.map((row) => SupabaseService.toMessage(row)).reverse();
       this.messages.update((list) => [...older, ...list]);
+      void this.loadReactions(older.map((m) => m.id));
       this.hasOlder.set(data.length === PAGE_SIZE);
       return older.length;
     } finally {
@@ -582,6 +614,75 @@ export class ChatRealtimeService {
     for (const row of data) this.handleInsert(SupabaseService.toMessage(row));
     void this.refreshRoom(room.room_code);
     void this.loadReads(room.id);
+    void this.syncReactions(room.id);
+  }
+
+  // ------------------------------------------------------------- reacciones
+
+  /** Reaccionar con una expresión de tu gatito; la misma otra vez la quita. */
+  async react(message: Message, reaction: Reaction): Promise<void> {
+    const meId = this.me()?.id;
+    if (!meId || message.status) return;
+    const previous = this.reactionRows().get(message.id)?.get(meId) ?? null;
+    const next = previous === reaction ? null : reaction;
+    this.setReaction(message.id, meId, next);
+    if (next) this.setState('me', catStateForReaction(next));
+    const { error } = await this.db.rpc('react_to_message', { p_message: message.id, p_reaction: next });
+    if (error) {
+      this.setReaction(message.id, meId, previous);
+      throw error;
+    }
+  }
+
+  private async loadReactions(messageIds: readonly string[]): Promise<void> {
+    if (!messageIds.length) return;
+    const { data, error } = await this.db
+      .from('message_reactions')
+      .select()
+      .in('message_id', [...messageIds]);
+    if (error) return; // sin la tabla (migración pendiente) el chat sigue funcionando
+    for (const row of data) this.applyReaction(row, false);
+  }
+
+  /** Reacciones que cambiaron mientras no escuchábamos. */
+  private async syncReactions(roomId: string): Promise<void> {
+    let query = this.db.from('message_reactions').select().eq('room_id', roomId);
+    if (this.reactionsSyncedAt) query = query.gt('updated_at', this.reactionsSyncedAt);
+    const { data, error } = await query.order('updated_at', { ascending: true }).limit(CATCH_UP_LIMIT);
+    if (error) return;
+    for (const row of data) this.applyReaction(row, true);
+  }
+
+  private applyReaction(row: Readonly<Record<string, unknown>>, live: boolean): void {
+    const messageId = row['message_id'];
+    const userId = row['user_id'];
+    const raw = row['reaction'];
+    const updatedAt = row['updated_at'];
+    if (typeof messageId !== 'string' || typeof userId !== 'string') return;
+    const reaction = isReaction(raw) ? raw : null;
+    if (typeof updatedAt === 'string') {
+      const iso = toIso(updatedAt);
+      if (!this.reactionsSyncedAt || iso > this.reactionsSyncedAt) this.reactionsSyncedAt = iso;
+    }
+    const before = this.reactionRows().get(messageId)?.get(userId) ?? null;
+    this.setReaction(messageId, userId, reaction);
+    // El compañero reaccionó: su gatito hace el gesto en el balcón.
+    if (live && reaction && reaction !== before && userId !== this.me()?.id) {
+      this.setState('partner', catStateForReaction(reaction));
+      void this.haptic(ImpactStyle.Light);
+    }
+  }
+
+  private setReaction(messageId: string, userId: string, reaction: Reaction | null): void {
+    this.reactionRows.update((all) => {
+      const next = new Map(all);
+      const byUser = new Map(next.get(messageId) ?? []);
+      if (reaction) byUser.set(userId, reaction);
+      else byUser.delete(userId);
+      if (byUser.size) next.set(messageId, byUser);
+      else next.delete(messageId);
+      return next;
+    });
   }
 
   // ------------------------------------------------------------- "visto"

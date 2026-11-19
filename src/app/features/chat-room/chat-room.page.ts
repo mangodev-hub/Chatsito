@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { AlertController, IonContent, IonFooter, IonHeader, NavController, ToastController } from '@ionic/angular';
 
 import { screenShake } from '../../core/models/animations';
-import { CAT_META, type Message } from '../../core/models/chat.models';
+import { CAT_META, type Message, type ReactionView } from '../../core/models/chat.models';
 import { ChatRealtimeService } from '../../core/services/chat-realtime.service';
 import { RoomJoinError, SessionService } from '../../core/services/session.service';
 import { SoundService } from '../../core/services/sound.service';
@@ -11,7 +11,7 @@ import { InstallButtonComponent } from '../../shared/install-button/install-butt
 
 import { CatStageComponent } from './components/cat-stage/cat-stage.component';
 import { ChatInputComponent, type OutgoingMessage } from './components/chat-input/chat-input.component';
-import { MessageBubbleComponent } from './components/message-bubble/message-bubble.component';
+import { MessageBubbleComponent, type ReactionPick } from './components/message-bubble/message-bubble.component';
 
 const LOAD_OLDER_THRESHOLD_PX = 80;
 const PAGING_QUIET_MS = 400;
@@ -79,6 +79,8 @@ export class ChatRoomPage implements OnInit, OnDestroy {
     return !!room?.released_user && room.released_user === this.chat.partner()?.id;
   });
 
+  /** Constante para burbujas sin reacciones (evita crear un arreglo nuevo en cada render). */
+  protected readonly noReactions: readonly ReactionView[] = [];
   private lastBottomId: string | null = null;
   private pagingQuietUntil = 0;
   /** Token de la sesión de chat que abrió esta página. */
@@ -188,6 +190,15 @@ export class ChatRoomPage implements OnInit, OnDestroy {
 
   protected onReact(message: Message): void {
     void this.chat.toggleSticker(message);
+  }
+
+  /** Reacción con una carita de gatito (mantener presionado un mensaje). */
+  protected async onReactWith({ message, reaction }: ReactionPick): Promise<void> {
+    try {
+      await this.chat.react(message, reaction);
+    } catch {
+      await this.toast('No se pudo reaccionar. Revisa tu conexión.');
+    }
   }
 
   protected async copyCode(): Promise<void> {

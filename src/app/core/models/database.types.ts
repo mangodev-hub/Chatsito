@@ -27,6 +27,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      message_reactions: {
+        Row: {
+          message_id: string;
+          reaction: string | null;
+          room_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          message_id: string;
+          reaction?: string | null;
+          room_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          message_id?: string;
+          reaction?: string | null;
+          room_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       messages: {
         Row: {
           content: string;
@@ -183,6 +207,10 @@ export type Database = {
       leave_group: {
         Args: { p_room: string };
         Returns: undefined;
+      };
+      react_to_message: {
+        Args: { p_message: string; p_reaction: string | null };
+        Returns: Database['public']['Tables']['message_reactions']['Row'];
       };
       mark_read: {
         Args: { p_room: string; p_at: string };
