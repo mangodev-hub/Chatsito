@@ -32,6 +32,12 @@ export class SupabaseService {
     return this.session;
   }
 
+  /** Id de la sesión ya existente en este teléfono, sin crear una nueva (null si nunca entró). */
+  async existingUserId(): Promise<string | null> {
+    const { data } = await this.client.auth.getSession();
+    return data.session?.user.id ?? null;
+  }
+
   private async resolveUser(): Promise<string> {
     const { data } = await this.client.auth.getSession();
     if (data.session) return data.session.user.id;

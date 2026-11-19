@@ -1,6 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { type CatType, type Profile, type Room, type RoomMember, isCatType } from '../models/chat.models';
+import {
+  type CatType,
+  type Profile,
+  type Room,
+  type RoomMember,
+  type RoomSummary,
+  isCatType,
+} from '../models/chat.models';
 
 import { SupabaseService } from './supabase.service';
 
@@ -109,6 +116,42 @@ export class SessionService {
       const profile = byId.get(r.user_id);
       return profile ? [{ profile, collarColor: r.collar_color, joinedAt: r.joined_at }] : [];
     });
+  }
+
+  /** "Tus chats": mis salas con el último mensaje y los no leídos. Vacío si este teléfono nunca entró. */
+  async myRooms(): Promise<RoomSummary[]> {
+    const uid = await this.supabase.existingUserId();
+    if (!uid) return [];
+    const { data, error } = await this.db.rpc('my_rooms');
+    if (error) throw error;
+    return data.map((r) => ({
+      roomId: r.room_id,
+      code: r.room_code,
+      kind: r.kind === 'group' ? 'group' : 'duo',
+      name: r.name,
+      partnerName: r.partner_username,
+      partnerType: isCatType(r.partner_avatar) ? r.partner_avatar : null,
+      memberCount: r.member_count,
+      memberTypes: (r.member_avatars ?? []).filter(isCatType),
+      lastContent: r.last_content,
+      lastIsSecret: r.last_is_secret === true,
+      lastFromMe: r.last_sender_id === uid,
+      lastAt: r.last_at,
+      createdAt: r.room_created_at,
+      unread: r.unread,
+    }));
+  }
+
+  /** Quita el chat solo de MI lista. Vuelve a aparecer si llega un mensaje nuevo. */
+  async hideRoom(roomId: string): Promise<void> {
+    const { error } = await this.db.rpc('hide_room', { p_room: roomId });
+    if (error) throw error;
+  }
+
+  /** Borra un chat 1 a 1 para las dos personas (mensajes incluidos). Sin vuelta atrás. */
+  async deleteRoom(roomId: string): Promise<void> {
+    const { error } = await this.db.rpc('delete_room', { p_room: roomId });
+    if (error) throw error;
   }
 
   /** Sale de la Manada (sus mensajes se conservan). */

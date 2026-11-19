@@ -112,7 +112,57 @@ export type BroadcastEvent =
   | { type: 'typing'; senderId: string; speed: TypingSpeed }
   | { type: 'typing-stop'; senderId: string }
   | { type: 'poke'; senderId: string }
-  | { type: 'collar-ring'; senderId: string };
+  | { type: 'collar-ring'; senderId: string }
+  /** Enviado por el servidor (delete_room) cuando la otra persona borra el chat para las dos. */
+  | { type: 'room-deleted'; senderId: string }
+  | RpsEvent;
+
+/** Piedra, papel o tijera (solo 1 a 1). Nada se guarda: todo viaja por el canal privado de la sala. */
+export type RpsHand = 'rock' | 'paper' | 'scissors';
+
+export type RpsEvent =
+  | { type: 'rps-invite'; senderId: string; gameId: string }
+  | { type: 'rps-accept'; senderId: string; gameId: string }
+  | { type: 'rps-decline'; senderId: string; gameId: string; reason: 'later' | 'muted' | 'busy' }
+  | { type: 'rps-cancel'; senderId: string; gameId: string }
+  /** Jugada sellada: huella de (partida + jugada + sal). Nadie puede ver la jugada antes de tiempo. */
+  | { type: 'rps-commit'; senderId: string; gameId: string; seal: string }
+  | { type: 'rps-reveal'; senderId: string; gameId: string; hand: RpsHand; salt: string };
+
+export const RPS_HANDS: readonly { key: RpsHand; emoji: string; label: string }[] = [
+  { key: 'rock', emoji: '✊', label: 'Piedra' },
+  { key: 'paper', emoji: '✋', label: 'Papel' },
+  { key: 'scissors', emoji: '✌️', label: 'Tijera' },
+];
+
+export function isRpsHand(value: unknown): value is RpsHand {
+  return value === 'rock' || value === 'paper' || value === 'scissors';
+}
+
+/** 1 = gana `a`, -1 = gana `b`, 0 = empate. */
+export function rpsOutcome(a: RpsHand, b: RpsHand): 1 | -1 | 0 {
+  if (a === b) return 0;
+  const beats: Record<RpsHand, RpsHand> = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+  return beats[a] === b ? 1 : -1;
+}
+
+/** Fila de "Tus chats" en el menú principal. */
+export interface RoomSummary {
+  roomId: string;
+  code: string;
+  kind: RoomKind;
+  name: string | null;
+  partnerName: string | null;
+  partnerType: CatType | null;
+  memberCount: number;
+  memberTypes: CatType[];
+  lastContent: string | null;
+  lastIsSecret: boolean;
+  lastFromMe: boolean;
+  lastAt: string | null;
+  createdAt: string;
+  unread: number;
+}
 
 /** Payload que cada usuario publica en Presence. */
 export interface PresencePayload {

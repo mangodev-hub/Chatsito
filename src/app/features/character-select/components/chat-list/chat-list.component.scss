@@ -1,0 +1,269 @@
+:host {
+  display: block;
+}
+
+.chats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px 12px;
+  border: var(--sketch);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-hard);
+  color: var(--ink-primary);
+  transition:
+    background-color 500ms ease,
+    border-color 500ms ease;
+}
+
+.chats-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.chats-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 700 18px var(--font-title);
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.refresh {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--sketch);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+
+  &:active {
+    transform: rotate(-90deg);
+    transition: transform 200ms ease;
+  }
+}
+
+.chats-error {
+  margin: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+
+.chat-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-item {
+  display: flex;
+  align-items: stretch;
+  border: var(--sketch);
+  border-radius: 16px;
+  background: var(--bg-canvas);
+  overflow: hidden;
+  animation: item-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+
+  &.unread {
+    background: var(--bg-accent-soft);
+  }
+}
+
+.chat-open {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 4px 9px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: color-mix(in srgb, var(--border-sketch) 6%, transparent);
+  }
+}
+
+.avatars {
+  flex: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+
+  img {
+    width: 46px;
+    height: 46px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.15));
+  }
+
+  &.stack img {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+
+    &:nth-child(1) {
+      left: 0;
+      top: 0;
+    }
+
+    &:nth-child(2) {
+      right: 0;
+      top: 6px;
+    }
+
+    &:nth-child(3) {
+      left: 8px;
+      bottom: 0;
+    }
+  }
+}
+
+.avatar-empty {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1.5px dashed var(--ink-secondary);
+  border-radius: 50%;
+  opacity: 0.7;
+
+  img {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.chat-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.chip {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--border-sketch);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--ink-secondary);
+}
+
+.chat-time {
+  flex: none;
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+
+.chat-preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+
+  .unread & {
+    color: var(--ink-primary);
+    font-weight: 800;
+  }
+}
+
+.badge {
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--border-sketch);
+  border-radius: 999px;
+  background: var(--paw-pink, #ffb7c5);
+  color: #3b2e2a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.chat-more {
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+  border: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--border-sketch) 40%, transparent);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    background: color-mix(in srgb, var(--border-sketch) 8%, transparent);
+  }
+}
+
+@keyframes item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-item {
+    animation: none;
+  }
+}

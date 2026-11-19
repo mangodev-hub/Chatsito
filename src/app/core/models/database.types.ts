@@ -6,6 +6,12 @@ export type Database = {
   };
   public: {
     Tables: {
+      room_hidden: {
+        Row: { room_id: string; user_id: string; hidden_at: string };
+        Insert: { room_id: string; user_id: string; hidden_at?: string };
+        Update: { room_id?: string; user_id?: string; hidden_at?: string };
+        Relationships: [];
+      };
       room_members: {
         Row: {
           room_id: string;
@@ -205,6 +211,34 @@ export type Database = {
         Returns: Database['public']['Tables']['rooms']['Row'];
       };
       leave_group: {
+        Args: { p_room: string };
+        Returns: undefined;
+      };
+      my_rooms: {
+        Args: Record<string, never>;
+        Returns: {
+          room_id: string;
+          room_code: string;
+          kind: string;
+          name: string | null;
+          room_created_at: string;
+          partner_id: string | null;
+          partner_username: string | null;
+          partner_avatar: string | null;
+          member_count: number;
+          member_avatars: string[] | null;
+          last_content: string | null;
+          last_is_secret: boolean | null;
+          last_sender_id: string | null;
+          last_at: string | null;
+          unread: number;
+        }[];
+      };
+      hide_room: {
+        Args: { p_room: string };
+        Returns: undefined;
+      };
+      delete_room: {
         Args: { p_room: string };
         Returns: undefined;
       };

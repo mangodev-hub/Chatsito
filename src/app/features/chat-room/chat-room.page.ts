@@ -5,6 +5,7 @@ import { AlertController, IonContent, IonFooter, IonHeader, NavController, Toast
 import { screenShake } from '../../core/models/animations';
 import { CAT_META, type Message, type ReactionView } from '../../core/models/chat.models';
 import { ChatRealtimeService } from '../../core/services/chat-realtime.service';
+import { RpsService, handEmoji } from '../../core/services/rps.service';
 import { RoomJoinError, SessionService } from '../../core/services/session.service';
 import { SoundService } from '../../core/services/sound.service';
 import { InstallButtonComponent } from '../../shared/install-button/install-button.component';
@@ -13,6 +14,7 @@ import { CatStageComponent } from './components/cat-stage/cat-stage.component';
 import { ChatInputComponent, type OutgoingMessage } from './components/chat-input/chat-input.component';
 import { GroupStageComponent } from './components/group-stage/group-stage.component';
 import { MessageBubbleComponent, type ReactionPick } from './components/message-bubble/message-bubble.component';
+import { RpsBarComponent } from './components/rps-bar/rps-bar.component';
 
 const LOAD_OLDER_THRESHOLD_PX = 80;
 const PAGING_QUIET_MS = 400;
@@ -28,6 +30,7 @@ const PAGING_QUIET_MS = 400;
     MessageBubbleComponent,
     ChatInputComponent,
     InstallButtonComponent,
+    RpsBarComponent,
   ],
   animations: [screenShake],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +50,9 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   protected readonly sound = inject(SoundService);
   private readonly session = inject(SessionService);
   private readonly nav = inject(NavController);
+  /** Piedra, papel o tijera (solo 1 a 1). */
+  protected readonly rps = inject(RpsService);
+  protected readonly handEmoji = (hand: Parameters<typeof handEmoji>[0]): string | null => handEmoji(hand) || null;
   private readonly toasts = inject(ToastController);
   private readonly alerts = inject(AlertController);
 
@@ -89,6 +95,13 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   private chatToken: number | null = null;
 
   constructor() {
+    // La otra persona borró este chat para las dos: avisar y volver al menú.
+    const deletedBaseline = this.chat.roomDeleted();
+    effect(() => {
+      if (this.chat.roomDeleted() === deletedBaseline) return;
+      void this.toast('Este chat fue borrado por la otra persona 🐾');
+      void this.nav.navigateRoot(['/']);
+    });
     // Solo baja al final cuando llega un mensaje nuevo abajo (no al cargar los anteriores arriba).
     effect(() => {
       const list = this.chat.messages();

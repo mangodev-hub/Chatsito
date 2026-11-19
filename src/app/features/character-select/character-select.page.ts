@@ -7,11 +7,13 @@ import { RoomJoinError, SessionService } from '../../core/services/session.servi
 import { InstallButtonComponent } from '../../shared/install-button/install-button.component';
 import { CatAvatarComponent } from '../chat-room/components/cat-avatar/cat-avatar.component';
 
+import { ChatListComponent } from './components/chat-list/chat-list.component';
+
 const CODE_LENGTH = 6;
 
 @Component({
   selector: 'app-character-select',
-  imports: [IonContent, CatAvatarComponent, InstallButtonComponent],
+  imports: [IonContent, CatAvatarComponent, InstallButtonComponent, ChatListComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './character-select.page.html',
   styleUrl: './character-select.page.scss',

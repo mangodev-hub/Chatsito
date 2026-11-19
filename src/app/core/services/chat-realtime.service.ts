@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { Subject } from 'rxjs';
 
 import {
   type BroadcastEvent,
@@ -15,6 +16,7 @@ import {
   type TypingSpeed,
   type Emotion,
   type Reaction,
+  type RpsEvent,
   type ReactionView,
   CAT_META,
   collarColor,
@@ -22,6 +24,7 @@ import {
   isOneShot,
   catStateForReaction,
   isReaction,
+  isRpsHand,
   reactionFor,
 } from '../models/chat.models';
 
@@ -94,6 +97,10 @@ export class ChatRealtimeService {
 
   // ---- pulsos de eventos para la UI
   readonly pokeReceived = signal(0);
+  /** La otra persona borró este chat para las dos (aviso del servidor por el canal privado). */
+  readonly roomDeleted = signal(0);
+  /** Eventos de piedra, papel o tijera del compañero (solo 1 a 1). */
+  readonly rpsEvents = new Subject<RpsEvent>();
   readonly flights = signal<Flight[]>([]);
 
   // ---- derivados
@@ -534,6 +541,15 @@ export class ChatRealtimeService {
     const event = this.parseEvent(payload);
     if (!event || event.senderId === this.me()?.id) return;
 
+    if (event.type === 'room-deleted') {
+      this.roomDeleted.update((n) => n + 1);
+      return;
+    }
+    if (event.type.startsWith('rps-')) {
+      if (!this.isGroup()) this.rpsEvents.next(event as RpsEvent);
+      return;
+    }
+
     if (this.isGroup()) {
       // Manada: "escribiendo" y el llamado de atención (vibra y sacude la pantalla de todos).
       if (event.type === 'typing') this.setMemberTyping(event.senderId, true);
@@ -912,9 +928,53 @@ export class ChatRealtimeService {
         return { type: 'poke', senderId };
       case 'collar-ring':
         return { type: 'collar-ring', senderId };
+      case 'room-deleted':
+        return { type: 'room-deleted', senderId };
+      default:
+        return this.parseRps(p, senderId);
+    }
+  }
+
+  private parseRps(p: Record<string, unknown>, senderId: string): RpsEvent | null {
+    const gameId = p['gameId'];
+    if (typeof gameId !== 'string' || gameId.length > 64) return null;
+    switch (p['type']) {
+      case 'rps-invite':
+        return { type: 'rps-invite', senderId, gameId };
+      case 'rps-accept':
+        return { type: 'rps-accept', senderId, gameId };
+      case 'rps-cancel':
+        return { type: 'rps-cancel', senderId, gameId };
+      case 'rps-decline': {
+        const reason = p['reason'] === 'muted' || p['reason'] === 'busy' ? p['reason'] : 'later';
+        return { type: 'rps-decline', senderId, gameId, reason };
+      }
+      case 'rps-commit':
+        return typeof p['seal'] === 'string' ? { type: 'rps-commit', senderId, gameId, seal: p['seal'] } : null;
+      case 'rps-reveal':
+        return isRpsHand(p['hand']) && typeof p['salt'] === 'string'
+          ? { type: 'rps-reveal', senderId, gameId, hand: p['hand'], salt: p['salt'] }
+          : null;
       default:
         return null;
     }
+  }
+
+  /** Envía un evento del juego al compañero por el canal privado. */
+  sendRps(event: RpsEvent): void {
+    this.broadcast(event);
+  }
+
+  /** Final de una partida: el gatito ganador salta y el otro baja las orejas (empate: los dos contentos). */
+  playGameOutcome(winner: Side | null): void {
+    if (winner === null) {
+      this.setState('me', 'happy');
+      this.setState('partner', 'happy');
+      return;
+    }
+    this.setState(winner, 'happy');
+    this.setState(winner === 'me' ? 'partner' : 'me', 'poke');
+    void this.haptic(ImpactStyle.Light);
   }
 
   private myId(): string {

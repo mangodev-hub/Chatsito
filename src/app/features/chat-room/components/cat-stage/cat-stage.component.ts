@@ -47,12 +47,20 @@ export class CatStageComponent {
   readonly partnerOnline = input(false);
   /** El compañero liberó su asiento y aún no vuelve a entrar. */
   readonly partnerReleased = input(false);
+  /** Piedra, papel o tijera (solo 1 a 1): mostrar el botón, si se puede jugar ahora, y las manos al revelar. */
+  readonly gameAvailable = input(false);
+  readonly canPlay = input(false);
+  readonly gameActive = input(false);
+  readonly gameMuted = input(false);
+  readonly myHand = input<string | null>(null);
+  readonly partnerHand = input<string | null>(null);
   readonly partnerTyping = input<TypingSpeed | null>(null);
   readonly roomCode = input('');
   readonly flights = input<Flight[]>([]);
 
   readonly poke = output<void>();
   readonly collarTap = output<void>();
+  readonly gameInvite = output<void>();
   /** Toque sobre el nombre del compañero: opciones del asiento. */
   readonly partnerMenu = output<void>();
   readonly oneShotDone = output<Side>();

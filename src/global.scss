@@ -197,3 +197,38 @@ ion-toast.toast-sketch {
     border-radius: 14px;
   }
 }
+
+ion-alert.alert-sketch .alert-button.alert-danger {
+  color: #d64545;
+}
+
+// Menú de opciones (⋯ en "Tus chats")
+ion-action-sheet.sheet-sketch {
+  --background: var(--bg-surface);
+  --color: var(--ink-primary);
+  --button-color: var(--ink-primary);
+  --button-color-activated: var(--ink-primary);
+
+  .action-sheet-group {
+    border: var(--sketch);
+    border-radius: 18px;
+    box-shadow: var(--shadow-hard);
+  }
+
+  .action-sheet-title {
+    color: var(--ink-primary);
+    font-weight: 800;
+  }
+
+  .action-sheet-sub-title {
+    color: var(--ink-secondary);
+  }
+
+  .action-sheet-button {
+    font-weight: 700;
+  }
+
+  .action-sheet-destructive {
+    color: #d64545;
+  }
+}

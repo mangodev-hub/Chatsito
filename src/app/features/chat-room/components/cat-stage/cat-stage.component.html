@@ -15,6 +15,9 @@
         [typingSpeed]="myTyping()"
         (oneShotDone)="oneShotDone.emit('me')"
       />
+      @if (myHand(); as hand) {
+        <span class="hand-bubble" aria-hidden="true">{{ hand }}</span>
+      }
     </div>
     <figcaption class="tag">
       <span class="tag-name">{{ myName() || 'Tú' }}</span>
@@ -40,6 +43,9 @@
           [typingSpeed]="partnerTyping()"
           (oneShotDone)="oneShotDone.emit('partner')"
         />
+        @if (partnerHand(); as hand) {
+          <span class="hand-bubble" aria-hidden="true">{{ hand }}</span>
+        }
       </button>
       <figcaption class="tag tag-button-wrap">
         <button
@@ -63,6 +69,26 @@
       >
         <img [src]="meta[pType].icon" alt="" />
       </button>
+      @if (gameAvailable()) {
+        <button
+          type="button"
+          class="game-btn"
+          [class.active]="gameActive()"
+          [class.muted]="gameMuted()"
+          [disabled]="!canPlay()"
+          [attr.aria-label]="
+            canPlay()
+              ? 'Retar a piedra, papel o tijera'
+              : (partnerName() || meta[pType].name) + ' está durmiendo: no se puede jugar ahora'
+          "
+          [title]="
+            canPlay() ? (gameMuted() ? 'Retar (vuelves a recibir retos)' : 'Piedra, papel o tijera') : 'Está durmiendo'
+          "
+          (click)="gameInvite.emit()"
+        >
+          ✊
+        </button>
+      }
     </figure>
   } @else {
     <figure class="seat seat-partner waiting">

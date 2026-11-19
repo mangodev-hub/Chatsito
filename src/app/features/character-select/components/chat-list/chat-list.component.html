@@ -1,0 +1,71 @@
+@if (rooms().length || failed()) {
+  <section class="chats" aria-labelledby="chats-title">
+    <header class="chats-head">
+      <h2 id="chats-title" class="chats-title">
+        <img src="assets/icons/icon-blush-paw.svg" alt="" />
+        Tus chats
+      </h2>
+      <button type="button" class="refresh" aria-label="Actualizar lista" (click)="reload()">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path
+            d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </header>
+
+    @if (failed()) {
+      <p class="chats-error">No pudimos cargar tus chats. Toca ↻ para intentar de nuevo.</p>
+    }
+
+    <ul class="chat-items">
+      @for (room of rooms(); track room.roomId) {
+        <li class="chat-item" [class.unread]="room.unread > 0" [class.group]="room.kind === 'group'">
+          <button type="button" class="chat-open" (click)="open(room)">
+            <span class="avatars" [class.stack]="avatars(room).length > 1" aria-hidden="true">
+              @for (src of avatars(room); track $index) {
+                <img [src]="src" alt="" />
+              } @empty {
+                <span class="avatar-empty"><img src="assets/icons/icon-blush-paw.svg" alt="" /></span>
+              }
+            </span>
+            <span class="chat-text">
+              <span class="chat-line">
+                <span class="chat-name">{{ title(room) }}</span>
+                @if (room.kind === 'group') {
+                  <span class="chip">Manada · {{ room.memberCount }}</span>
+                }
+                <time class="chat-time">{{ when(room) }}</time>
+              </span>
+              <span class="chat-line">
+                <span class="chat-preview">{{ subtitle(room) }}</span>
+                @if (room.unread > 0) {
+                  <span class="badge" [attr.aria-label]="room.unread + ' sin leer'">{{
+                    room.unread > 99 ? '99+' : room.unread
+                  }}</span>
+                }
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="chat-more"
+            [attr.aria-label]="'Opciones de ' + title(room)"
+            (click)="options(room, $event)"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <circle cx="5" cy="12" r="2" fill="currentColor" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <circle cx="19" cy="12" r="2" fill="currentColor" />
+            </svg>
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+}

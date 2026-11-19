@@ -57,6 +57,13 @@
     [partnerTyping]="chat.partnerTypingSpeed()"
     [roomCode]="code().toUpperCase()"
     [flights]="chat.flights()"
+    [gameAvailable]="!chat.isGroup()"
+    [canPlay]="rps.canPlay()"
+    [gameActive]="rps.phase() !== 'idle' && rps.phase() !== 'notice'"
+    [gameMuted]="rps.muted()"
+    [myHand]="handEmoji(rps.shownHands().me)"
+    [partnerHand]="handEmoji(rps.shownHands().partner)"
+    (gameInvite)="rps.invite()"
     (poke)="chat.sendPoke()"
     (collarTap)="chat.ringPartnerCollar()"
     (oneShotDone)="chat.oneShotDone($event)"
@@ -112,6 +119,9 @@
 </ion-content>
 
 <ion-footer class="ion-no-border">
+  @if (!chat.isGroup()) {
+  <app-rps-bar />
+  }
   <app-chat-input
     [myType]="chat.myType()"
     [disabled]="!ready()"
