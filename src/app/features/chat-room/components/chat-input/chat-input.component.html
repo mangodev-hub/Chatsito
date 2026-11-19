@@ -1,0 +1,42 @@
+<form class="bar" (submit)="submit($event)">
+  <button
+    type="button"
+    class="icon-btn"
+    [attr.aria-pressed]="secret()"
+    aria-label="Mensaje secreto"
+    title="Mensaje secreto"
+    (click)="toggleSecret()"
+  >
+    <img src="assets/icons/icon-sparkle-star.svg" alt="" />
+  </button>
+
+  <label class="visually-hidden" for="chat-text">Escribe un mensaje</label>
+  <input
+    id="chat-text"
+    class="field-sketch"
+    [class.secret]="secret()"
+    type="text"
+    autocomplete="off"
+    enterkeyhint="send"
+    [maxLength]="maxLength"
+    [placeholder]="secret() ? 'Mensaje secreto ✦' : 'Escribe algo bonito…'"
+    [value]="text()"
+    [disabled]="disabled()"
+    (input)="onInput($event)"
+  />
+
+  <button
+    type="button"
+    class="icon-btn"
+    aria-label="Llamado de atención"
+    title="Llamado de atención"
+    [disabled]="disabled()"
+    (click)="poke.emit()"
+  >
+    <img [src]="pokeIcon()" alt="" />
+  </button>
+
+  <button type="submit" class="icon-btn send" aria-label="Enviar" [disabled]="!canSend()">
+    <img [src]="sendIcon()" alt="" />
+  </button>
+</form>

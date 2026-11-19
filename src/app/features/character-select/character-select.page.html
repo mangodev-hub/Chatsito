@@ -1,0 +1,106 @@
+<ion-content class="select-content">
+  <main class="wrap">
+    <header class="intro">
+      <p class="eyebrow">
+        <img src="assets/icons/icon-blush-paw.svg" alt="" />
+        chat 1 a 1
+      </p>
+      <h1>Day &amp; Night Sync</h1>
+      <p class="lede">Elige tu gatito, comparte un código de sala y conversen frente a frente.</p>
+    </header>
+
+    <div class="picker" role="radiogroup" aria-label="Elige tu gatito">
+      @for (cat of cats; track cat) {
+        <button
+          type="button"
+          role="radio"
+          class="cat-card"
+          [class.active]="chosen() === cat"
+          [class.night]="cat === 'black_cat'"
+          [attr.aria-checked]="chosen() === cat"
+          (click)="choose(cat)"
+        >
+          <img class="cat-thumb" [src]="meta[cat].png" [alt]="meta[cat].nickname" />
+          <span class="cat-name">{{ meta[cat].name }}</span>
+          <span class="cat-chip">
+            <img [src]="meta[cat].icon" alt="" />
+            {{ meta[cat].theme === 'day' ? 'Día' : 'Noche' }}
+          </span>
+        </button>
+      }
+    </div>
+
+    <section class="panel" aria-label="Entrar a una sala">
+      <label class="field-label" for="username">Tu nombre</label>
+      <input
+        id="username"
+        class="field-sketch"
+        type="text"
+        autocomplete="nickname"
+        maxlength="32"
+        placeholder="¿Cómo te llamas?"
+        [value]="username()"
+        (input)="onName($event)"
+        (keydown.enter)="create()"
+      />
+
+      <button type="button" class="btn-sketch warm full" [disabled]="!nameValid() || busy() !== null" (click)="create()">
+        <img [src]="meta[chosen()].icon" alt="" />
+        {{ busy() === 'create' ? 'Creando sala…' : 'Crear sala nueva' }}
+      </button>
+
+      <div class="divider"><span>o únete con un código</span></div>
+
+      <label class="field-label" for="room-code">Código de sala</label>
+      <div class="code-boxes">
+        <input
+          id="room-code"
+          class="code-input"
+          type="text"
+          inputmode="text"
+          autocapitalize="characters"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="6"
+          [value]="joinCode()"
+          (input)="onCode($event)"
+          (keydown.enter)="join()"
+        />
+        @for (i of codeSlots; track i) {
+          <span
+            class="code-box"
+            aria-hidden="true"
+            [class.filled]="joinCode().length > i"
+            [class.current]="joinCode().length === i"
+          >{{ joinCode()[i] ?? '' }}</span>
+        }
+      </div>
+
+      <button type="button" class="btn-sketch full" [disabled]="!codeValid() || busy() !== null" (click)="join()">
+        {{ busy() === 'join' ? 'Entrando…' : 'Unirme a la sala' }}
+      </button>
+
+      @if (error(); as e) {
+        <p class="error" role="alert">{{ e }}</p>
+      }
+    </section>
+  </main>
+
+  <section class="hill" aria-hidden="true">
+    <div class="floaters">
+      @if (chosen() === 'white_cat') {
+        <img class="f f1" src="assets/icons/icon-daisy.svg" alt="" />
+        <img class="f f2" src="assets/icons/icon-blush-paw.svg" alt="" />
+        <img class="f f3" src="assets/icons/icon-daisy.svg" alt="" />
+      } @else {
+        <img class="f f1" src="assets/icons/icon-sparkle-star.svg" alt="" />
+        <img class="f f2" src="assets/icons/icon-bell.svg" alt="" />
+        <img class="f f3" src="assets/icons/icon-sparkle-star.svg" alt="" />
+      }
+    </div>
+    <app-cat-avatar class="hero-cat" [type]="chosen()" [state]="heroState()" (oneShotDone)="heroState.set('idle')" />
+    <svg class="hill-shape" viewBox="0 0 400 120" preserveAspectRatio="none">
+      <path d="M0 60 C 90 10, 170 4, 220 20 S 340 50, 400 34 L400 120 L0 120 Z" />
+    </svg>
+  </section>
+</ion-content>

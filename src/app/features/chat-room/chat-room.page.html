@@ -1,0 +1,80 @@
+<ion-header class="ion-no-border">
+  <div class="topbar">
+    <button type="button" class="icon-btn back" aria-label="Salir de la sala" (click)="leave()">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+    <h1 class="room-title">Day &amp; Night</h1>
+    <button
+      type="button"
+      class="icon-btn sound"
+      [attr.aria-pressed]="sound.enabled()"
+      [attr.aria-label]="sound.enabled() ? 'Silenciar cascabel' : 'Activar sonido del cascabel'"
+      [title]="sound.enabled() ? 'Sonido activado' : 'Sonido silenciado'"
+      (click)="sound.toggle()"
+    >
+      <img src="assets/icons/icon-bell.svg" alt="" />
+    </button>
+    <button type="button" class="code-pill" (click)="copyCode()" [attr.aria-label]="'Copiar código de sala ' + code()">
+      <span class="code-label">{{ copied() ? '¡copiado!' : 'sala' }}</span>
+      <span class="code-value">{{ code().toUpperCase() }}</span>
+    </button>
+  </div>
+
+  <app-cat-stage
+    [myType]="chat.myType()"
+    [partnerType]="chat.partnerType()"
+    [myState]="chat.myCatState()"
+    [partnerState]="chat.partnerCatState()"
+    [myReplay]="chat.myStateTick()"
+    [partnerReplay]="chat.partnerStateTick()"
+    [myTyping]="chat.myTypingSpeed()"
+    [myName]="chat.me()?.username ?? ''"
+    [partnerName]="chat.partner()?.username ?? ''"
+    [partnerOnline]="chat.isPartnerOnline()"
+    [partnerTyping]="chat.partnerTypingSpeed()"
+    [roomCode]="code().toUpperCase()"
+    [flights]="chat.flights()"
+    (poke)="chat.sendPoke()"
+    (collarTap)="chat.ringPartnerCollar()"
+    (oneShotDone)="chat.oneShotDone($event)"
+    (flightDone)="chat.removeFlight($event)"
+  />
+</ion-header>
+
+<ion-content class="chat-content">
+  <div class="sky" aria-hidden="true"></div>
+  <section class="messages" aria-live="polite" aria-label="Mensajes">
+    @if (!ready()) {
+      <p class="empty">Abriendo la ventana del balcón…</p>
+    } @else {
+      @for (m of chat.messages(); track m.id) {
+        <app-message-bubble
+          [message]="m"
+          [mine]="m.sender_id === chat.me()?.id"
+          [senderType]="chat.senderType(m.sender_id)"
+          [mode]="chat.activeTheme()"
+          (react)="onReact($event)"
+          (purr)="chat.purr()"
+        />
+      } @empty {
+        <div class="empty">
+          <img src="assets/icons/icon-daisy.svg" alt="" />
+          <p class="title-serif">Todavía no hay mensajes</p>
+          <p>Haz doble toque en el gatito de tu compañero para saludar, o escribe algo bonito.</p>
+        </div>
+      }
+    }
+  </section>
+</ion-content>
+
+<ion-footer class="ion-no-border">
+  <app-chat-input
+    [myType]="chat.myType()"
+    [disabled]="!ready()"
+    (send)="onSend($event)"
+    (typing)="chat.notifyTyping($event)"
+    (poke)="chat.sendPoke()"
+  />
+</ion-footer>

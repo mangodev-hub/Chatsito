@@ -1,0 +1,165 @@
+/* Core CSS required for Ionic components to work properly */
+@import '@ionic/angular/css/core.css';
+
+/* Basic CSS for apps built with Ionic */
+@import '@ionic/angular/css/normalize.css';
+@import '@ionic/angular/css/structure.css';
+@import '@ionic/angular/css/typography.css';
+@import '@ionic/angular/css/display.css';
+
+/* Optional CSS utils */
+@import '@ionic/angular/css/padding.css';
+@import '@ionic/angular/css/flex-utils.css';
+
+/* El tema Día / Noche / Eclipse lo controla la app (sin paleta oscura del sistema). */
+
+html,
+body {
+  font-family: var(--font-body);
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+ion-app,
+ion-content {
+  --ion-font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+.title-serif {
+  font-family: var(--font-title);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variation-settings: 'SOFT' 100, 'WONK' 0;
+}
+
+/* -------- Botón principal estilo sticker ("Start") -------- */
+.btn-sketch {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: var(--sketch);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  font: 800 16px/1 var(--font-body);
+  box-shadow: var(--shadow-hard);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 400ms ease,
+    color 400ms ease,
+    border-color 400ms ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--border-sketch);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.warm {
+    background: var(--bg-accent-warm);
+    color: var(--on-accent);
+  }
+
+  img {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.icon-btn {
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: var(--sketch);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-hard);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 400ms ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--border-sketch);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--bg-accent-warm);
+  }
+
+  img {
+    width: 26px;
+    height: 26px;
+    pointer-events: none;
+  }
+}
+
+.field-sketch {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 18px;
+  border: var(--sketch);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  font: 600 16px var(--font-body);
+  outline: none;
+  transition:
+    box-shadow 150ms ease,
+    background-color 400ms ease,
+    color 400ms ease;
+
+  &::placeholder {
+    color: var(--ink-secondary);
+    opacity: 0.8;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--bg-accent-warm);
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--bg-accent-warm);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

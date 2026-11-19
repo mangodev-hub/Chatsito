@@ -1,0 +1,41 @@
+<div
+  class="bubble"
+  role="group"
+  tabindex="0"
+  [class.secret]="message().is_secret"
+  [class.revealed]="revealed()"
+  [attr.aria-label]="
+    message().is_secret
+      ? 'Mensaje secreto. Mantén presionado para revelarlo. Doble toque para posar tu gatito.'
+      : 'Mensaje. Doble toque para posar tu gatito.'
+  "
+  (pointerdown)="onPointerDown($event)"
+  (pointerup)="onPointerUp()"
+  (pointercancel)="hide()"
+  (pointerleave)="hide()"
+  (contextmenu)="$event.preventDefault()"
+  (keydown)="onKey($event)"
+>
+  @if (stickerSrc(); as src) {
+    <img class="sticker" [src]="src" alt="Gatito posado" @stickerDrop />
+  }
+
+  <p class="text" [attr.aria-hidden]="message().is_secret && !revealed()">{{ message().content }}</p>
+
+  @if (message().is_secret && !revealed()) {
+    <div class="secret-cover" aria-hidden="true">
+      <ng-lottie [options]="cloudOptions" [styles]="cloudStyles" />
+      <span class="secret-hint">
+        <img src="assets/icons/icon-sparkle-star.svg" alt="" />
+        mantén presionado
+      </span>
+    </div>
+  }
+
+  <span class="meta">
+    @if (emotionIcon(); as icon) {
+      <img class="emotion" [src]="icon" alt="" />
+    }
+    <time [attr.datetime]="message().created_at">{{ message().created_at | date: 'HH:mm' }}</time>
+  </span>
+</div>

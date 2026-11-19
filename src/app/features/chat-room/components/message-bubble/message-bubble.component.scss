@@ -1,0 +1,165 @@
+:host {
+  display: flex;
+  padding: 4px 0;
+
+  // Colores por defecto (temas Día / Noche unificados)
+  --b-bg: var(--bg-surface);
+  --b-ink: var(--ink-primary);
+  --b-ink-2: var(--ink-secondary);
+  --b-border: var(--border-sketch);
+}
+
+:host(.mine) {
+  justify-content: flex-end;
+  --b-bg: var(--bg-accent-warm);
+  --b-ink: var(--on-accent);
+  --b-ink-2: var(--on-accent);
+}
+
+:host(.theirs) {
+  justify-content: flex-start;
+}
+
+// Modo Eclipse: cada burbuja conserva la superficie de su gatito emisor
+:host(.eclipse.from-white) {
+  --b-bg: var(--day-surface);
+  --b-ink: var(--day-ink);
+  --b-ink-2: var(--day-ink-2);
+  --b-border: var(--day-ink);
+}
+
+:host(.eclipse.from-black) {
+  --b-bg: var(--night-surface);
+  --b-ink: var(--night-ink);
+  --b-ink-2: var(--gold);
+  --b-border: var(--gold);
+}
+
+.bubble {
+  position: relative;
+  max-width: min(78%, 420px);
+  padding: 10px 14px 6px;
+  border: 1.5px solid var(--b-border);
+  border-radius: var(--radius-bubble);
+  background: var(--b-bg);
+  color: var(--b-ink);
+  box-shadow: 0 3px 0 var(--b-border);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition:
+    background-color 500ms ease,
+    color 500ms ease,
+    border-color 500ms ease;
+
+  :host(.mine) & {
+    border-bottom-right-radius: 6px;
+  }
+
+  :host(.theirs) & {
+    border-bottom-left-radius: 6px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+}
+
+.text {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  transition: filter 200ms ease, opacity 200ms ease;
+
+  .secret:not(.revealed) & {
+    filter: blur(6px);
+    opacity: 0.55;
+  }
+}
+
+.secret-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  padding-bottom: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+
+  ng-lottie {
+    position: absolute;
+    inset: -10% -6%;
+    opacity: 0.95;
+  }
+}
+
+.secret-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1.5px solid var(--day-ink);
+  border-radius: 999px;
+  background: var(--day-surface);
+  color: var(--day-ink);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+
+  img {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.secret {
+  min-width: 176px;
+  min-height: 58px;
+}
+
+.meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--b-ink-2);
+  opacity: 0.8;
+}
+
+.emotion {
+  width: 14px;
+  height: 14px;
+}
+
+.sticker {
+  position: absolute;
+  top: -30px;
+  width: 38px;
+  height: auto;
+  filter: var(--sticker-shadow);
+  pointer-events: none;
+
+  :host(.mine) & {
+    left: 10px;
+  }
+
+  :host(.theirs) & {
+    right: 10px;
+  }
+}
+
+:host:has(.sticker) {
+  padding-top: 30px;
+}

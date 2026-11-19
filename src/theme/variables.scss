@@ -1,0 +1,70 @@
+// Kawaii Cozy Cat UI — tokens Day & Night (ver SKILL.md)
+
+:root,
+.theme-day {
+  --bg-canvas: #faf3e3;
+  --bg-surface: #fffdf9;
+  --bg-accent-soft: #f3e5c8;
+  --bg-accent-warm: #f6d88c;
+  --ink-primary: #3b2e2a;
+  --ink-secondary: #7a6860;
+  --border-sketch: #3b2e2a;
+  --blush-accent: #f7b5b2;
+  --petal-white: #ffffff;
+  --star-glow: #fff1b8;
+  --hill: #e5a95c;
+  --hill-shade: #d4924a;
+  --on-accent: #3b2e2a;
+  --deco-opacity: 0.2;
+
+  --ion-background-color: var(--bg-canvas);
+  --ion-text-color: var(--ink-primary);
+  --ion-color-primary: #3b2e2a;
+  --ion-color-primary-contrast: #fffdf9;
+}
+
+.theme-night {
+  --bg-canvas: #1e1c2a;
+  --bg-surface: #2a273b;
+  --bg-accent-soft: #36324b;
+  --bg-accent-warm: #e8b858;
+  --ink-primary: #faf3e3;
+  --ink-secondary: #b8b0c8;
+  --border-sketch: #5c5478;
+  --blush-accent: #f29ca3;
+  --petal-white: #ffffff;
+  --star-glow: #fff6cc;
+  --hill: #2e2942;
+  --hill-shade: #26223a;
+  --on-accent: #1e1c2a;
+  --deco-opacity: 0.25;
+
+  --ion-background-color: var(--bg-canvas);
+  --ion-text-color: var(--ink-primary);
+  --ion-color-primary: #e8b858;
+  --ion-color-primary-contrast: #1e1c2a;
+}
+
+// Superficies fijas por personaje (modo Eclipse: cada burbuja conserva su origen)
+:root {
+  --day-canvas: #faf3e3;
+  --day-surface: #fffdf9;
+  --day-ink: #3b2e2a;
+  --day-ink-2: #7a6860;
+  --night-canvas: #1e1c2a;
+  --night-surface: #2a273b;
+  --night-ink: #faf3e3;
+  --night-ink-2: #b8b0c8;
+  --night-border: #5c5478;
+  --gold: #e8b858;
+  --paw-pink: #ffb7c5;
+
+  --font-title: 'Fraunces', 'Georgia', serif;
+  --font-body: 'Nunito', 'Quicksand', system-ui, sans-serif;
+  --radius-card: 22px;
+  --radius-bubble: 20px;
+  --sketch: 1.5px solid var(--border-sketch);
+  --shadow-hard: 0 3px 0 var(--border-sketch);
+  --sticker-shadow: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.12));
+  --ease-bounce: cubic-bezier(0.3, 1.4, 0.5, 1);
+}

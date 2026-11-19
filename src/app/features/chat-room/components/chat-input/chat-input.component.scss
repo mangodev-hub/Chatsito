@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  border-top: var(--sketch);
+  background: var(--bg-canvas);
+  transition: background-color 500ms ease, border-color 500ms ease;
+}
+
+.field-sketch {
+  flex: 1;
+  min-width: 0;
+  border-radius: 999px;
+
+  &.secret {
+    border-style: dashed;
+    background: var(--bg-accent-soft);
+  }
+}
+
+.send {
+  border-radius: 50%;
+  background: var(--bg-accent-warm);
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled) img {
+    animation: wiggle 2.8s ease-in-out infinite;
+  }
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+}
+
+@keyframes wiggle {
+  0%,
+  86%,
+  100% { transform: rotate(0deg); }
+  90% { transform: rotate(-14deg); }
+  95% { transform: rotate(10deg); }
+}

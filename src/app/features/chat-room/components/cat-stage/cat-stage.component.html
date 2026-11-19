@@ -1,0 +1,83 @@
+<div class="balcony">
+  <!-- micro-trazos decorativos de fondo -->
+  <img class="deco d1" src="assets/icons/icon-sparkle-star.svg" alt="" />
+  <img class="deco d2" src="assets/icons/icon-daisy.svg" alt="" />
+  <img class="deco d3" src="assets/icons/icon-blush-paw.svg" alt="" />
+  <img class="deco d4" src="assets/icons/icon-sparkle-star.svg" alt="" />
+
+  <!-- Mi gatito -->
+  <figure class="seat seat-me" [class.night]="myType() === 'black_cat'">
+    <div class="cat-wrap">
+      <app-cat-avatar
+        [type]="myType()"
+        [state]="myState()"
+        [replay]="myReplay()"
+        [typingSpeed]="myTyping()"
+        (oneShotDone)="oneShotDone.emit('me')"
+      />
+    </div>
+    <figcaption class="tag">
+      <span class="tag-name">{{ myName() || 'Tú' }}</span>
+      <span class="tag-sub">{{ meta[myType()].name }} · tú</span>
+    </figcaption>
+  </figure>
+
+  <!-- Gatito del compañero -->
+  @if (partnerType(); as pType) {
+    <figure class="seat seat-partner" [class.night]="pType === 'black_cat'">
+      <button
+        type="button"
+        class="cat-wrap cat-button"
+        [attr.aria-label]="'Doble toque para sobresaltar a ' + (partnerName() || meta[pType].name)"
+        title="Doble toque: ¡sobresalto!"
+        (click)="onPartnerTap()"
+        (dblclick)="$event.preventDefault()"
+      >
+        <app-cat-avatar
+          [type]="pType"
+          [state]="partnerState()"
+          [replay]="partnerReplay()"
+          [typingSpeed]="partnerTyping()"
+          (oneShotDone)="oneShotDone.emit('partner')"
+        />
+      </button>
+      <figcaption class="tag">
+        <span class="tag-name">{{ partnerName() || meta[pType].name }}</span>
+        <span class="tag-sub" [class.online]="partnerOnline()">
+          <span class="dot" aria-hidden="true"></span>{{ partnerStatus() }}
+        </span>
+      </figcaption>
+      <span class="visually-hidden" aria-live="polite">{{ partnerTypingLabel() }}</span>
+      <button
+        type="button"
+        class="collar-btn"
+        [attr.aria-label]="pType === 'white_cat' ? 'Hacer girar la margarita' : 'Hacer sonar el cascabel'"
+        (click)="collarTap.emit()"
+      >
+        <img [src]="meta[pType].icon" alt="" />
+      </button>
+    </figure>
+  } @else {
+    <figure class="seat seat-partner waiting">
+      <div class="ghost" aria-hidden="true">
+        <img src="assets/icons/icon-blush-paw.svg" alt="" />
+      </div>
+      <figcaption class="tag">
+        <span class="tag-name">Esperando…</span>
+        <span class="tag-sub">comparte el código <strong>{{ roomCode() }}</strong></span>
+      </figcaption>
+    </figure>
+  }
+
+  <!-- Partículas viajeras -->
+  @for (flight of flights(); track flight.id) {
+    <img
+      class="particle"
+      [class.from-partner]="flight.from === 'partner'"
+      [src]="flight.icon"
+      alt=""
+      [@particleArc]="arcFor(flight)"
+      (@particleArc.done)="flightDone.emit(flight.id)"
+    />
+  }
+</div>
