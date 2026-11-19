@@ -62,6 +62,26 @@ export class CharacterSelectPage {
     this.error.set(null);
   }
 
+  /** Pega el código (o el enlace completo de la sala) desde el portapapeles. */
+  protected async pasteCode(): Promise<void> {
+    const input = document.getElementById('room-code') as HTMLInputElement | null;
+    try {
+      const text = await navigator.clipboard.readText();
+      const value = this.clean(text);
+      if (!value) {
+        this.error.set('En el portapapeles no hay un código de sala.');
+        return;
+      }
+      if (input) input.value = value;
+      this.joinCode.set(value);
+      this.error.set(null);
+    } catch {
+      // Sin permiso para leer el portapapeles: deja el campo listo para pegar a mano.
+      input?.focus();
+      this.error.set('Mantén presionado sobre las casillas y elige «Pegar».');
+    }
+  }
+
   protected onCode(event: Event): void {
     const el = event.target as HTMLInputElement;
     const value = this.clean(el.value);
@@ -110,8 +130,13 @@ export class CharacterSelectPage {
     }
   }
 
+  /** Acepta el código suelto o un enlace `…/room/ABC123`; quita tildes, espacios y símbolos. */
   private clean(value: string): string {
+    const fromLink = /\/room\/([A-Za-z0-9]{6})/.exec(value);
+    if (fromLink) return fromLink[1].toUpperCase();
     return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
       .slice(0, CODE_LENGTH);

@@ -51,7 +51,16 @@
 
       <div class="divider"><span>o únete con un código</span></div>
 
-      <label class="field-label" for="room-code">Código de sala</label>
+      <div class="code-label-row">
+        <label class="field-label" for="room-code">Código de sala</label>
+        <button type="button" class="paste-btn" (click)="pasteCode()">
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+            <rect x="7" y="4" width="11" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+            <path d="M10 4V3h5v1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          Pegar
+        </button>
+      </div>
       <div class="code-boxes">
         <input
           id="room-code"
@@ -61,7 +70,6 @@
           autocapitalize="characters"
           autocomplete="off"
           spellcheck="false"
-          maxlength="6"
           [value]="joinCode()"
           (input)="onCode($event)"
           (keydown.enter)="join()"
