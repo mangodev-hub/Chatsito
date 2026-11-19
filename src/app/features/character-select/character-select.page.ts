@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 
@@ -43,6 +43,8 @@ export class CharacterSelectPage {
   protected readonly busy = signal<'create' | 'join' | null>(null);
   protected readonly error = signal<string | null>(null);
 
+  private readonly chatList = viewChild(ChatListComponent);
+
   protected readonly nameValid = computed(() => this.username().trim().length > 0);
   protected readonly codeValid = computed(() => this.joinCode().length === CODE_LENGTH);
 
@@ -56,6 +58,11 @@ export class CharacterSelectPage {
       document.body.classList.toggle('theme-night', night);
       document.body.classList.toggle('theme-day', !night);
     });
+  }
+
+  /** Ionic reutiliza esta página al volver al menú: refrescar "Tus chats" cada vez que se entra. */
+  ionViewWillEnter(): void {
+    void this.chatList()?.reload();
   }
 
   protected choose(type: CatType): void {

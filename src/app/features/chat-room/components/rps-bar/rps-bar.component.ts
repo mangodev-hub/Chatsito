@@ -16,7 +16,7 @@ import { RpsService, handEmoji } from '../../../../core/services/rps.service';
             <button type="button" class="ghost" (click)="rps.cancel()">Cancelar</button>
           }
           @case ('invited') {
-            <span class="text">✊✋✌️ {{ rps.partnerName() }} te reta</span>
+            <span class="text">✊ {{ rps.partnerName() }} te reta</span>
             <span class="actions">
               <button type="button" class="primary" (click)="rps.accept()">Jugar</button>
               <button type="button" class="ghost" (click)="rps.decline()">Ahora no</button>
