@@ -8,6 +8,26 @@ export class SoundService {
   readonly enabled = signal(this.restore());
   private ctx: AudioContext | null = null;
 
+  constructor() {
+    // Chrome en Android no deja sonar audio hasta un gesto del usuario: lo "despertamos" en el primer toque,
+    // así el primer mensaje que llega ya suena.
+    const unlock = (): void => {
+      if (!this.enabled() || typeof AudioContext === 'undefined') return;
+      this.ctx ??= new AudioContext();
+      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('pointerdown', unlock);
+    document.addEventListener('keydown', unlock);
+  }
+
+  /** Sonido del collar del gatito: cascabel para Cascabel, pétalos para Margarita. */
+  collar(type: 'white_cat' | 'black_cat'): void {
+    if (type === 'black_cat') this.bell();
+    else this.petal();
+  }
+
   toggle(): void {
     this.enabled.update((v) => !v);
     try {
@@ -41,6 +61,43 @@ export class SoundService {
       osc.connect(gain).connect(master);
       osc.start(now + delay);
       osc.stop(now + delay + decay + 0.05);
+    }
+  }
+
+  /** Margarita: tres notas de marimba suave que suben (do–mi–sol), cálidas y redondas. */
+  petal(): void {
+    const ctx = this.context();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.11;
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = 2600;
+    tone.connect(ctx.destination);
+    master.connect(tone);
+    for (const [freq, delay, level] of [
+      [523.25, 0, 0.9],
+      [659.25, 0.075, 0.8],
+      [783.99, 0.15, 1],
+    ] as const) {
+      // fundamental + armónico 4 (madera) con caída corta
+      for (const [mult, amp, decay] of [
+        [1, 1, 0.45],
+        [4, 0.18, 0.12],
+      ] as const) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq * mult;
+        const t = now + delay;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(level * amp, t + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+        osc.connect(gain).connect(master);
+        osc.start(t);
+        osc.stop(t + decay + 0.05);
+      }
     }
   }
 

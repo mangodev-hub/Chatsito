@@ -17,11 +17,11 @@
       type="button"
       class="icon-btn sound"
       [attr.aria-pressed]="sound.enabled()"
-      [attr.aria-label]="sound.enabled() ? 'Silenciar cascabel' : 'Activar sonido del cascabel'"
+      [attr.aria-label]="sound.enabled() ? 'Silenciar sonidos' : 'Activar sonidos'"
       [title]="sound.enabled() ? 'Sonido activado' : 'Sonido silenciado'"
       (click)="sound.toggle()"
     >
-      <img src="assets/icons/icon-bell.svg" alt="" />
+      <img [src]="soundIcon()" alt="" />
     </button>
     <button type="button" class="code-pill" (click)="copyCode()" [attr.aria-label]="'Copiar código de sala ' + code()">
       <span class="code-label">{{ copied() ? '¡copiado!' : 'sala' }}</span>

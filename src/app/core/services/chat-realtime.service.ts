@@ -426,7 +426,7 @@ export class ChatRealtimeService {
       if (isOneShot(state)) this.partnerStateTick.update((n) => n + 1);
     }
     const type = side === 'me' ? this.myType() : this.partnerType();
-    if (state === 'message' && type === 'black_cat') this.sound.bell();
+    if (state === 'message' && type) this.sound.collar(type);
   }
 
   removeFlight(id: number): void {

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { AlertController, IonContent, IonFooter, IonHeader, NavController, ToastController } from '@ionic/angular';
 
 import { screenShake } from '../../core/models/animations';
-import type { Message } from '../../core/models/chat.models';
+import { CAT_META, type Message } from '../../core/models/chat.models';
 import { ChatRealtimeService } from '../../core/services/chat-realtime.service';
 import { RoomJoinError, SessionService } from '../../core/services/session.service';
 import { SoundService } from '../../core/services/sound.service';
@@ -52,6 +52,8 @@ export class ChatRoomPage implements OnInit, OnDestroy {
     return t === 'eclipse' ? (this.chat.myType() === 'white_cat' ? 'day' : 'night') : t;
   });
 
+  /** El botón de sonido lleva el collar de mi gatito: margarita o cascabel. */
+  protected readonly soundIcon = computed(() => CAT_META[this.chat.myType()].icon);
   protected readonly connectionLabel = computed(() => {
     switch (this.chat.connection()) {
       case 'offline':
