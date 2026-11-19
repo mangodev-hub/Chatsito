@@ -163,3 +163,37 @@ h3,
     transition-duration: 1ms !important;
   }
 }
+
+// Diálogos y avisos con el look del sticker
+ion-alert.alert-sketch {
+  --background: var(--bg-surface);
+  --backdrop-opacity: 0.35;
+
+  .alert-wrapper {
+    border: var(--sketch);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-hard);
+  }
+
+  .alert-title,
+  .alert-message {
+    color: var(--ink-primary);
+  }
+
+  .alert-button {
+    color: var(--ink-primary);
+    font-weight: 800;
+  }
+}
+
+ion-toast.toast-sketch {
+  --background: var(--bg-surface);
+  --color: var(--ink-primary);
+  --border-radius: 14px;
+  --box-shadow: var(--shadow-hard);
+
+  &::part(container) {
+    border: var(--sketch);
+    border-radius: 14px;
+  }
+}

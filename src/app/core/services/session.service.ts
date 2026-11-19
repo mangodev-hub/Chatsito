@@ -15,27 +15,42 @@ export class RoomJoinError extends Error {
   }
 }
 
-/** Perfil anónimo local + creación / unión a salas 1 a 1. */
+/**
+ * Perfil = usuario anónimo de Supabase Auth (una sesión por dispositivo).
+ * Las salas tienen 2 asientos: unirse y recuperar un asiento pasa por RPC en el servidor.
+ */
 @Injectable({ providedIn: 'root' })
 export class SessionService {
-  private readonly db = inject(SupabaseService).client;
+  private readonly supabase = inject(SupabaseService);
+  private readonly db = this.supabase.client;
 
+  /** Caché local: también sirve para rellenar nombre y gatito si la sesión cambió. */
   readonly profile = signal<Profile | null>(this.restore());
 
+  /** Perfil válido para la sesión actual, o null si hay que elegir gatito y nombre. */
+  async currentProfile(): Promise<Profile | null> {
+    const uid = await this.supabase.userId();
+    const cached = this.profile();
+    if (cached?.id === uid) return cached;
+    const fresh = await this.fetchProfile(uid);
+    if (fresh) this.persist(fresh);
+    return fresh;
+  }
+
   async saveProfile(username: string, avatar: CatType): Promise<Profile> {
-    const current = this.profile();
-    if (current) {
-      const { data } = await this.db
-        .from('profiles')
-        .update({ username, avatar_type: avatar })
-        .eq('id', current.id)
-        .select()
-        .maybeSingle();
-      if (data) return this.persist(SupabaseService.toProfile(data));
-    }
+    const uid = await this.supabase.userId();
+    const { data: updated, error: updateError } = await this.db
+      .from('profiles')
+      .update({ username, avatar_type: avatar })
+      .eq('id', uid)
+      .select()
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (updated) return this.persist(SupabaseService.toProfile(updated));
+
     const { data, error } = await this.db
       .from('profiles')
-      .insert({ username, avatar_type: avatar })
+      .insert({ id: uid, username, avatar_type: avatar })
       .select()
       .single();
     if (error) throw error;
@@ -43,11 +58,11 @@ export class SessionService {
   }
 
   async createRoom(): Promise<Room> {
-    const me = this.requireProfile();
+    const uid = await this.supabase.userId();
     for (let attempt = 0; attempt < 5; attempt++) {
       const { data, error } = await this.db
         .from('rooms')
-        .insert({ room_code: this.generateCode(), user_1: me.id })
+        .insert({ room_code: this.generateCode(), user_1: uid })
         .select()
         .single();
       if (!error) return SupabaseService.toRoom(data);
@@ -56,25 +71,26 @@ export class SessionService {
     throw new Error('No se pudo generar un código de sala único');
   }
 
+  /** Entra a la sala: asiento libre, asiento liberado por el compañero o el tuyo de antes. */
   async joinRoom(rawCode: string): Promise<Room> {
-    const me = this.requireProfile();
-    const room = await this.fetchRoom(rawCode);
-    if (!room) throw new RoomJoinError('not-found');
-    if (room.user_1 === me.id || room.user_2 === me.id) return room;
-    if (room.user_2 !== null) throw new RoomJoinError('full');
-
-    const { data, error } = await this.db
-      .from('rooms')
-      .update({ user_2: me.id })
-      .eq('id', room.id)
-      .is('user_2', null)
-      .select()
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new RoomJoinError('full');
+    await this.supabase.userId();
+    const { data, error } = await this.db.rpc('join_room', { p_code: rawCode.trim().toUpperCase() });
+    if (error) {
+      if (error.message.includes('not-found')) throw new RoomJoinError('not-found');
+      if (error.message.includes('full')) throw new RoomJoinError('full');
+      throw error;
+    }
     return SupabaseService.toRoom(data);
   }
 
+  /** Tu compañero cambió de teléfono: su asiento queda libre para que vuelva a entrar con el código. */
+  async releasePartnerSeat(roomId: string): Promise<Room> {
+    const { data, error } = await this.db.rpc('release_partner_seat', { p_room: roomId });
+    if (error) throw error;
+    return SupabaseService.toRoom(data);
+  }
+
+  /** Solo devuelve salas de las que eres miembro (RLS). */
   async fetchRoom(rawCode: string): Promise<Room | null> {
     const { data, error } = await this.db
       .from('rooms')
@@ -89,12 +105,6 @@ export class SessionService {
     const { data, error } = await this.db.from('profiles').select().eq('id', id).maybeSingle();
     if (error) throw error;
     return data ? SupabaseService.toProfile(data) : null;
-  }
-
-  private requireProfile(): Profile {
-    const me = this.profile();
-    if (!me) throw new Error('Primero elige tu gatito y tu nombre');
-    return me;
   }
 
   private generateCode(): string {

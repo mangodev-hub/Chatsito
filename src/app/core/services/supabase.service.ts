@@ -2,13 +2,7 @@ import { Injectable } from '@angular/core';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { environment } from '../../../environments/environment';
-import {
-  type Message,
-  type Profile,
-  type Room,
-  isCatType,
-  isEmotion,
-} from '../models/chat.models';
+import { type Message, type Profile, type Room, isCatType, isEmotion } from '../models/chat.models';
 import type { Database } from '../models/database.types';
 
 type Row = Readonly<Record<string, unknown>>;
@@ -19,14 +13,32 @@ const strOrNull = (v: unknown): string | null => (typeof v === 'string' ? v : nu
 /** Instancia singleton de SupabaseClient + conversores tipados de filas. */
 @Injectable({ providedIn: 'root' })
 export class SupabaseService {
-  readonly client: SupabaseClient<Database> = createClient<Database>(
-    environment.supabaseUrl,
-    environment.supabaseKey,
-    {
-      auth: { persistSession: false },
-      realtime: { params: { eventsPerSecond: 20 } },
-    },
-  );
+  readonly client: SupabaseClient<Database> = createClient<Database>(environment.supabaseUrl, environment.supabaseKey, {
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'day-night-sync.auth' },
+    realtime: { params: { eventsPerSecond: 20 } },
+  });
+
+  private session: Promise<string> | null = null;
+
+  /**
+   * Id del usuario de Auth (= id del perfil). Si no hay sesión, inicia una anónima.
+   * La sesión se guarda en el dispositivo: es la "llave" de tu asiento en la sala.
+   */
+  userId(): Promise<string> {
+    this.session ??= this.resolveUser().catch((err: unknown) => {
+      this.session = null;
+      throw err;
+    });
+    return this.session;
+  }
+
+  private async resolveUser(): Promise<string> {
+    const { data } = await this.client.auth.getSession();
+    if (data.session) return data.session.user.id;
+    const { data: anon, error } = await this.client.auth.signInAnonymously();
+    if (error || !anon.user) throw error ?? new Error('No se pudo iniciar la sesión anónima');
+    return anon.user.id;
+  }
 
   static toProfile(row: Row): Profile {
     const avatar = row['avatar_type'];
@@ -44,6 +56,7 @@ export class SupabaseService {
       room_code: str(row['room_code']),
       user_1: strOrNull(row['user_1']),
       user_2: strOrNull(row['user_2']),
+      released_user: strOrNull(row['released_user']),
       created_at: str(row['created_at']),
     };
   }

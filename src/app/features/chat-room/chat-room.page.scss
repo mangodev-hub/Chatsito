@@ -167,3 +167,49 @@ ion-header {
     filter: grayscale(1);
   }
 }
+
+.connection {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: fit-content;
+  margin: 0 auto 10px;
+  padding: 4px 12px;
+  border: var(--sketch);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--ink-secondary);
+  box-shadow: var(--shadow-hard);
+  font-size: 12px;
+  font-weight: 800;
+  animation: breathe-pill 1.6s ease-in-out infinite;
+}
+
+.older {
+  align-self: center;
+  margin: 0 0 12px;
+  padding: 6px 14px;
+  border: 1.5px dashed var(--border-sketch);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: 700 12.5px var(--font-body);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+}
+
+@keyframes breathe-pill {
+  0%,
+  100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connection {
+    animation: none;
+  }
+}

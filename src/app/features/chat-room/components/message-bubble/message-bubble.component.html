@@ -37,5 +37,13 @@
       <img class="emotion" [src]="icon" alt="" />
     }
     <time [attr.datetime]="message().created_at">{{ message().created_at | date: 'HH:mm' }}</time>
+    @if (receiptLabel(); as label) {
+      <span class="receipt" [class]="'receipt receipt-' + receipt()">
+        @if (receipt() === 'seen') {
+          <img src="assets/icons/icon-blush-paw.svg" alt="" />
+        }
+        {{ label }}
+      </span>
+    }
   </span>
 </div>

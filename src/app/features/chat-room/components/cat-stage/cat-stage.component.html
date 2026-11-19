@@ -41,11 +41,18 @@
           (oneShotDone)="oneShotDone.emit('partner')"
         />
       </button>
-      <figcaption class="tag">
-        <span class="tag-name">{{ partnerName() || meta[pType].name }}</span>
-        <span class="tag-sub" [class.online]="partnerOnline()">
-          <span class="dot" aria-hidden="true"></span>{{ partnerStatus() }}
-        </span>
+      <figcaption class="tag tag-button-wrap">
+        <button
+          type="button"
+          class="tag-button"
+          [attr.aria-label]="'Opciones del lugar de ' + (partnerName() || meta[pType].name)"
+          (click)="partnerMenu.emit()"
+        >
+          <span class="tag-name">{{ partnerName() || meta[pType].name }}</span>
+          <span class="tag-sub" [class.online]="partnerOnline()">
+            <span class="dot" aria-hidden="true"></span>{{ partnerStatus() }}
+          </span>
+        </button>
       </figcaption>
       <span class="visually-hidden" aria-live="polite">{{ partnerTypingLabel() }}</span>
       <button
@@ -64,7 +71,9 @@
       </div>
       <figcaption class="tag">
         <span class="tag-name">Esperando…</span>
-        <span class="tag-sub">comparte el código <strong>{{ roomCode() }}</strong></span>
+        <span class="tag-sub"
+          >comparte el código <strong>{{ roomCode() }}</strong></span
+        >
       </figcaption>
     </figure>
   }

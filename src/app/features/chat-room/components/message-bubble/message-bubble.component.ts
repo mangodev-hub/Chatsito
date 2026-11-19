@@ -1,10 +1,18 @@
 import { DatePipe } from '@angular/common';
-import type { OnDestroy} from '@angular/core';
+import type { OnDestroy } from '@angular/core';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { type AnimationOptions, LottieComponent } from 'ngx-lottie';
 
 import { bubbleIn, stickerDrop } from '../../../../core/models/animations';
 import { CAT_META, type CatType, type Message, type ThemeMode } from '../../../../core/models/chat.models';
+import type { Receipt } from '../../../../core/services/chat-realtime.service';
+
+const RECEIPT_LABEL: Readonly<Record<Receipt, string>> = {
+  sending: 'enviando…',
+  failed: 'no se envió · toca para reintentar',
+  sent: 'enviado',
+  seen: 'visto',
+};
 
 const DOUBLE_TAP_MS = 320;
 const PURR_INTERVAL_MS = 180;
@@ -31,6 +39,8 @@ const EMOTION_ICON: Readonly<Record<Message['emotion'], string | null>> = {
     '[class.eclipse]': "mode() === 'eclipse'",
     '[class.from-white]': "senderType() === 'white_cat'",
     '[class.from-black]': "senderType() === 'black_cat'",
+    '[class.sending]': "message().status === 'sending'",
+    '[class.failed]': "message().status === 'failed'",
   },
 })
 export class MessageBubbleComponent implements OnDestroy {
@@ -38,9 +48,11 @@ export class MessageBubbleComponent implements OnDestroy {
   readonly mine = input(false);
   readonly senderType = input<CatType | null>(null);
   readonly mode = input<ThemeMode>('day');
+  readonly receipt = input<Receipt | null>(null);
 
   readonly react = output<Message>();
   readonly purr = output<void>();
+  readonly retry = output<Message>();
 
   protected readonly revealed = signal(false);
   protected readonly stickerSrc = computed(() => {
@@ -48,6 +60,10 @@ export class MessageBubbleComponent implements OnDestroy {
     return s ? CAT_META[s].png : null;
   });
   protected readonly emotionIcon = computed(() => EMOTION_ICON[this.message().emotion]);
+  protected readonly receiptLabel = computed(() => {
+    const r = this.receipt();
+    return r ? RECEIPT_LABEL[r] : null;
+  });
   protected readonly cloudOptions: AnimationOptions = {
     path: 'assets/lottie/secret-cloud.json',
     renderer: 'svg',
@@ -70,6 +86,10 @@ export class MessageBubbleComponent implements OnDestroy {
 
   protected onPointerUp(): void {
     this.hide();
+    if (this.message().status === 'failed') {
+      this.retry.emit(this.message());
+      return;
+    }
     const now = Date.now();
     if (now - this.lastTap < DOUBLE_TAP_MS) {
       this.lastTap = 0;

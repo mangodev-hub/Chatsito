@@ -1,18 +1,7 @@
-import type {
-  OnDestroy,
-  OnInit} from '@angular/core';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  signal,
-  viewChild,
-} from '@angular/core';
+import type { OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { IonContent, IonFooter, IonHeader, ToastController } from '@ionic/angular';
+import { AlertController, IonContent, IonFooter, IonHeader, ToastController } from '@ionic/angular';
 
 import { screenShake } from '../../core/models/animations';
 import type { Message } from '../../core/models/chat.models';
@@ -23,6 +12,9 @@ import { SoundService } from '../../core/services/sound.service';
 import { CatStageComponent } from './components/cat-stage/cat-stage.component';
 import { ChatInputComponent, type OutgoingMessage } from './components/chat-input/chat-input.component';
 import { MessageBubbleComponent } from './components/message-bubble/message-bubble.component';
+
+const LOAD_OLDER_THRESHOLD_PX = 80;
+const PAGING_QUIET_MS = 400;
 
 @Component({
   selector: 'app-chat-room',
@@ -46,6 +38,7 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   private readonly session = inject(SessionService);
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastController);
+  private readonly alerts = inject(AlertController);
 
   /** Parámetro de ruta `room/:code` (withComponentInputBinding). */
   readonly code = input.required<string>();
@@ -60,10 +53,34 @@ export class ChatRoomPage implements OnInit, OnDestroy {
     return t === 'eclipse' ? (this.chat.myType() === 'white_cat' ? 'day' : 'night') : t;
   });
 
+  protected readonly connectionLabel = computed(() => {
+    switch (this.chat.connection()) {
+      case 'offline':
+        return 'Sin conexión · tus mensajes esperan';
+      case 'connecting':
+        return this.ready() ? 'Reconectando…' : null;
+      default:
+        return null;
+    }
+  });
+  /** El compañero liberó su lugar: aún no ha vuelto a entrar. */
+  protected readonly partnerReleased = computed(() => {
+    const room = this.chat.room();
+    return !!room?.released_user && room.released_user === this.chat.partner()?.id;
+  });
+
+  private lastBottomId: string | null = null;
+  private pagingQuietUntil = 0;
+
   constructor() {
+    // Solo baja al final cuando llega un mensaje nuevo abajo (no al cargar los anteriores arriba).
     effect(() => {
-      const count = this.chat.messages().length;
-      if (count > 0) setTimeout(() => void this.content()?.scrollToBottom(280), 30);
+      const list = this.chat.messages();
+      const last = list[list.length - 1];
+      if (!last || last.id === this.lastBottomId) return;
+      const first = this.lastBottomId === null;
+      this.lastBottomId = last.id;
+      setTimeout(() => void this.content()?.scrollToBottom(first ? 0 : 280), 30);
     });
     effect(() => {
       document.body.classList.toggle('theme-night', this.tokenTheme() === 'night');
@@ -72,12 +89,12 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    const me = this.session.profile();
-    if (!me) {
-      await this.router.navigate(['/'], { queryParams: { code: this.code() } });
-      return;
-    }
     try {
+      const me = await this.session.currentProfile();
+      if (!me) {
+        await this.router.navigate(['/'], { queryParams: { code: this.code() } });
+        return;
+      }
       const room = await this.session.joinRoom(this.code());
       await this.chat.joinRoom(room, me);
       this.ready.set(true);
@@ -85,7 +102,7 @@ export class ChatRoomPage implements OnInit, OnDestroy {
       const msg =
         err instanceof RoomJoinError
           ? err.reason === 'full'
-            ? 'Esta sala ya tiene dos gatitos 🐾'
+            ? 'Esta sala ya tiene dos gatitos 🐾 Si eras tú en otro teléfono, pide que liberen tu lugar.'
             : 'No encontramos esa sala'
           : 'No pudimos conectar con la sala';
       await this.toast(msg);
@@ -101,7 +118,59 @@ export class ChatRoomPage implements OnInit, OnDestroy {
     try {
       await this.chat.sendMessage(msg.content, msg.secret);
     } catch {
-      await this.toast('El mensaje no se pudo enviar');
+      await this.toast('No se pudo enviar. Toca el mensaje para reintentar.');
+    }
+  }
+
+  protected async onRetry(message: Message): Promise<void> {
+    try {
+      await this.chat.retryMessage(message);
+    } catch {
+      await this.toast('Sigue sin enviarse. Revisa tu conexión.');
+    }
+  }
+
+  protected async onScroll(event: CustomEvent<{ scrollTop: number }>): Promise<void> {
+    if (Date.now() < this.pagingQuietUntil) return;
+    if (event.detail.scrollTop < LOAD_OLDER_THRESHOLD_PX) await this.loadOlder();
+  }
+
+  /** Carga la página anterior y conserva la posición de lectura. */
+  protected async loadOlder(): Promise<void> {
+    const content = this.content();
+    if (!content || this.chat.loadingOlder() || !this.chat.hasOlder()) return;
+    const el = await content.getScrollElement();
+    const fromBottom = el.scrollHeight - el.scrollTop;
+    try {
+      const added = await this.chat.loadOlder();
+      // Evita que el salto de posición dispare otra carga en cadena.
+      this.pagingQuietUntil = Date.now() + PAGING_QUIET_MS;
+      if (added > 0) requestAnimationFrame(() => (el.scrollTop = el.scrollHeight - fromBottom));
+    } catch {
+      await this.toast('No pudimos cargar los mensajes anteriores');
+    }
+  }
+
+  /** Tu compañero cambió de teléfono o borró la app: libera su asiento para que vuelva con el código. */
+  protected async confirmRelease(): Promise<void> {
+    const name = this.chat.partner()?.username || 'tu compañero';
+    const alert = await this.alerts.create({
+      header: `¿${name} cambió de teléfono?`,
+      message: `Libera su lugar y podrá volver a entrar con el código ${this.code().toUpperCase()}. Sus mensajes se conservan.`,
+      cssClass: 'alert-sketch',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        { text: 'Liberar su lugar', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    if (role !== 'confirm') return;
+    try {
+      await this.chat.releasePartnerSeat();
+      await this.toast(`Listo: ${name} puede volver con el código ${this.code().toUpperCase()}`);
+    } catch {
+      await this.toast('No se pudo liberar su lugar');
     }
   }
 

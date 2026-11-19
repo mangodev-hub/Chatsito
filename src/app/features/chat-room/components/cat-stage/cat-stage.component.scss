@@ -202,3 +202,28 @@
   100% { transform: scale(1); }
   50% { transform: scale(1.04); }
 }
+
+.tag-button-wrap {
+  padding: 0;
+}
+
+.tag-button {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:active {
+    transform: translateY(1px);
+  }
+}

@@ -16,6 +16,8 @@ export interface Room {
   room_code: string;
   user_1: string | null;
   user_2: string | null;
+  /** Compañero cuyo asiento fue liberado (cambió de teléfono): puede reclamarlo con el código. */
+  released_user: string | null;
   created_at: string;
 }
 
@@ -28,6 +30,8 @@ export interface Message {
   emotion: Emotion;
   sticker_reaction: CatType | null;
   created_at: string;
+  /** Solo en el cliente: envío optimista. Sin valor = guardado en el servidor. */
+  status?: 'sending' | 'failed';
 }
 
 /** Eventos efímeros enviados por Broadcast (`cat-action`). */
@@ -82,7 +86,6 @@ export function reactionFor(emotion: Emotion): CatState | null {
   if (emotion === 'alert') return 'angry';
   return null;
 }
-
 
 export const CAT_META: Readonly<
   Record<CatType, { name: string; nickname: string; theme: 'day' | 'night'; png: string; lottie: string; icon: string }>

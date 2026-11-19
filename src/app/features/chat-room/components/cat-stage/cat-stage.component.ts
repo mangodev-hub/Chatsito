@@ -45,12 +45,16 @@ export class CatStageComponent {
   readonly myName = input('');
   readonly partnerName = input('');
   readonly partnerOnline = input(false);
+  /** El compañero liberó su asiento y aún no vuelve a entrar. */
+  readonly partnerReleased = input(false);
   readonly partnerTyping = input<TypingSpeed | null>(null);
   readonly roomCode = input('');
   readonly flights = input<Flight[]>([]);
 
   readonly poke = output<void>();
   readonly collarTap = output<void>();
+  /** Toque sobre el nombre del compañero: opciones del asiento. */
+  readonly partnerMenu = output<void>();
   readonly oneShotDone = output<Side>();
   readonly flightDone = output<number>();
 
@@ -58,7 +62,10 @@ export class CatStageComponent {
   protected readonly leftCanvas = computed(() => this.canvasOf(this.myType()));
   protected readonly rightCanvas = computed(() => this.canvasOf(this.partnerType() ?? this.myType()));
   /** La animación reemplaza el texto "escribiendo…": aquí solo queda presencia. */
-  protected readonly partnerStatus = computed(() => (this.partnerOnline() ? 'en línea' : 'durmiendo… zZz'));
+  protected readonly partnerStatus = computed(() => {
+    if (this.partnerReleased()) return `lugar libre · código ${this.roomCode()}`;
+    return this.partnerOnline() ? 'en línea' : 'durmiendo… zZz';
+  });
   /** Texto solo para lectores de pantalla. */
   protected readonly partnerTypingLabel = computed(() => {
     const t = this.partnerTyping();

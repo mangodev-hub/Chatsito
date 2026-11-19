@@ -163,3 +163,32 @@
 :host:has(.sticker) {
   padding-top: 30px;
 }
+
+.receipt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  opacity: 0.75;
+
+  img {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.receipt-failed {
+  color: #d9534f;
+  opacity: 1;
+}
+
+:host(.sending) .bubble {
+  opacity: 0.7;
+}
+
+:host(.failed) .bubble {
+  border-style: dashed;
+  cursor: pointer;
+}

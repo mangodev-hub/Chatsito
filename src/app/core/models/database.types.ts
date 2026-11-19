@@ -1,4 +1,5 @@
 // Generado con Supabase MCP (generate_typescript_types) — proyecto "Chatsito".
+// + migración 20261118120000_two_seat_rooms_auth_rls (room_reads, released_user, RPC).
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -76,10 +77,29 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_reads: {
+        Row: {
+          last_read_at: string;
+          room_id: string;
+          user_id: string;
+        };
+        Insert: {
+          last_read_at?: string;
+          room_id: string;
+          user_id: string;
+        };
+        Update: {
+          last_read_at?: string;
+          room_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       rooms: {
         Row: {
           created_at: string;
           id: string;
+          released_user: string | null;
           room_code: string;
           user_1: string | null;
           user_2: string | null;
@@ -87,6 +107,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
+          released_user?: string | null;
           room_code: string;
           user_1?: string | null;
           user_2?: string | null;
@@ -94,6 +115,7 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
+          released_user?: string | null;
           room_code?: string;
           user_1?: string | null;
           user_2?: string | null;
@@ -117,7 +139,20 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      join_room: {
+        Args: { p_code: string };
+        Returns: Database['public']['Tables']['rooms']['Row'];
+      };
+      release_partner_seat: {
+        Args: { p_room: string };
+        Returns: Database['public']['Tables']['rooms']['Row'];
+      };
+      mark_read: {
+        Args: { p_room: string; p_at: string };
+        Returns: undefined;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

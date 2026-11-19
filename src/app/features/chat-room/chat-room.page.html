@@ -2,7 +2,14 @@
   <div class="topbar">
     <button type="button" class="icon-btn back" aria-label="Salir de la sala" (click)="leave()">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path
+          d="M15 5l-7 7 7 7"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
       </svg>
     </button>
     <h1 class="room-title">Day &amp; Night</h1>
@@ -33,39 +40,48 @@
     [myName]="chat.me()?.username ?? ''"
     [partnerName]="chat.partner()?.username ?? ''"
     [partnerOnline]="chat.isPartnerOnline()"
+    [partnerReleased]="partnerReleased()"
     [partnerTyping]="chat.partnerTypingSpeed()"
     [roomCode]="code().toUpperCase()"
     [flights]="chat.flights()"
     (poke)="chat.sendPoke()"
     (collarTap)="chat.ringPartnerCollar()"
     (oneShotDone)="chat.oneShotDone($event)"
+    (partnerMenu)="confirmRelease()"
     (flightDone)="chat.removeFlight($event)"
   />
 </ion-header>
 
-<ion-content class="chat-content">
+<ion-content class="chat-content" [scrollEvents]="true" (ionScroll)="onScroll($event)">
   <div class="sky" aria-hidden="true"></div>
+  @if (connectionLabel(); as label) {
+  <p class="connection" role="status">{{ label }}</p>
+  }
   <section class="messages" aria-live="polite" aria-label="Mensajes">
     @if (!ready()) {
-      <p class="empty">Abriendo la ventana del balcón…</p>
-    } @else {
-      @for (m of chat.messages(); track m.id) {
-        <app-message-bubble
-          [message]="m"
-          [mine]="m.sender_id === chat.me()?.id"
-          [senderType]="chat.senderType(m.sender_id)"
-          [mode]="chat.activeTheme()"
-          (react)="onReact($event)"
-          (purr)="chat.purr()"
-        />
-      } @empty {
-        <div class="empty">
-          <img src="assets/icons/icon-daisy.svg" alt="" />
-          <p class="title-serif">Todavía no hay mensajes</p>
-          <p>Haz doble toque en el gatito de tu compañero para saludar, o escribe algo bonito.</p>
-        </div>
-      }
-    }
+    <p class="empty">Abriendo la ventana del balcón…</p>
+    } @else { @if (chat.hasOlder()) {
+    <button type="button" class="older" [disabled]="chat.loadingOlder()" (click)="loadOlder()">
+      {{ chat.loadingOlder() ? 'Buscando recuerdos…' : 'Ver mensajes anteriores' }}
+    </button>
+    } @for (m of chat.messages(); track m.id) {
+    <app-message-bubble
+      [message]="m"
+      [mine]="m.sender_id === chat.me()?.id"
+      [senderType]="chat.senderType(m.sender_id)"
+      [mode]="chat.activeTheme()"
+      [receipt]="chat.receipts().get(m.id) ?? null"
+      (react)="onReact($event)"
+      (purr)="chat.purr()"
+      (retry)="onRetry($event)"
+    />
+    } @empty {
+    <div class="empty">
+      <img src="assets/icons/icon-daisy.svg" alt="" />
+      <p class="title-serif">Todavía no hay mensajes</p>
+      <p>Haz doble toque en el gatito de tu compañero para saludar, o escribe algo bonito.</p>
+    </div>
+    } }
   </section>
 </ion-content>
 

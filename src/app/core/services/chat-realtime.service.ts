@@ -25,6 +25,11 @@ import { SupabaseService } from './supabase.service';
 
 export type Side = 'me' | 'partner';
 
+export type Connection = 'connecting' | 'online' | 'offline';
+
+/** Estado de un mensaje propio, para la línea pequeña bajo la burbuja. */
+export type Receipt = 'sending' | 'failed' | 'sent' | 'seen';
+
 export interface Flight {
   id: number;
   from: Side;
@@ -34,6 +39,11 @@ export interface Flight {
 const TYPING_DEBOUNCE_MS = 300;
 const TYPING_IDLE_MS = 1600;
 const PARTNER_TYPING_TIMEOUT_MS = 2500;
+const PAGE_SIZE = 50;
+const CATCH_UP_LIMIT = 500;
+const RETRY_BASE_MS = 1000;
+const RETRY_MAX_MS = 30_000;
+const MARK_READ_DEBOUNCE_MS = 400;
 
 /** Conecta Presence, Broadcast y Postgres Changes de Supabase con Signals. */
 @Injectable({ providedIn: 'root' })
@@ -47,6 +57,11 @@ export class ChatRealtimeService {
   readonly me = signal<Profile | null>(null);
   readonly partner = signal<Profile | null>(null);
   readonly messages = signal<Message[]>([]);
+  readonly hasOlder = signal(false);
+  readonly loadingOlder = signal(false);
+  readonly connection = signal<Connection>('connecting');
+  /** Hasta dónde leyó el compañero (servidor, `room_reads`). */
+  readonly partnerReadAt = signal<string | null>(null);
   readonly isPartnerOnline = signal(false);
   readonly partnerTypingSpeed = signal<TypingSpeed | null>(null);
   readonly myTypingSpeed = signal<TypingSpeed>('normal');
@@ -63,9 +78,7 @@ export class ChatRealtimeService {
   readonly flights = signal<Flight[]>([]);
 
   // ---- derivados
-  readonly partnerCatState = computed<CatState>(() =>
-    this.isPartnerOnline() ? this.partnerAction() : 'sleeping',
-  );
+  readonly partnerCatState = computed<CatState>(() => (this.isPartnerOnline() ? this.partnerAction() : 'sleeping'));
   readonly myType = computed<CatType>(() => this.me()?.avatar_type ?? 'white_cat');
   readonly partnerType = computed<CatType | null>(() => this.partner()?.avatar_type ?? null);
   readonly activeTheme = computed<ThemeMode>(() => {
@@ -73,6 +86,26 @@ export class ChatRealtimeService {
     const theirs = this.partnerType();
     if (!theirs || theirs === mine) return CAT_META[mine].theme;
     return 'eclipse';
+  });
+  /** "visto" va en mi último mensaje leído; "enviado" en el último si aún no lo ha leído. */
+  readonly receipts = computed<ReadonlyMap<string, Receipt>>(() => {
+    const meId = this.me()?.id;
+    const readAt = this.partnerReadAt();
+    const map = new Map<string, Receipt>();
+    let lastConfirmed: Message | null = null;
+    let lastSeen: Message | null = null;
+    for (const m of this.messages()) {
+      if (m.sender_id !== meId) continue;
+      if (m.status) {
+        map.set(m.id, m.status);
+        continue;
+      }
+      lastConfirmed = m;
+      if (readAt && toIso(m.created_at) <= readAt) lastSeen = m;
+    }
+    if (lastSeen) map.set(lastSeen.id, 'seen');
+    if (lastConfirmed && lastConfirmed !== lastSeen) map.set(lastConfirmed.id, 'sent');
+    return map;
   });
   /** Tipo de gatito del último emisor: orienta el degradado del modo Eclipse. */
   readonly lastSenderType = computed<CatType | null>(() => {
@@ -83,12 +116,30 @@ export class ChatRealtimeService {
   });
 
   private channel: RealtimeChannel | null = null;
+  /** Cambia en cada join/leave: invalida reintentos y respuestas de una sala anterior. */
+  private generation = 0;
+  private subscribedOnce = false;
+  private retryCount = 0;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private markReadTimer: ReturnType<typeof setTimeout> | null = null;
+  private myReadAt: string | null = null;
   private flightSeq = 0;
   private lastTypingSent = 0;
   private typingTrailing: ReturnType<typeof setTimeout> | null = null;
   private typingIdle: ReturnType<typeof setTimeout> | null = null;
   private partnerTypingTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly onVisibility = (): void => void this.trackPresence();
+  private readonly onVisibility = (): void => {
+    void this.trackPresence();
+    if (document.visibilityState === 'visible') {
+      void this.catchUp();
+      this.scheduleMarkRead();
+    }
+  };
+  private readonly onOnline = (): void => {
+    if (this.connection() !== 'online') this.reconnectNow();
+    else void this.catchUp();
+  };
+  private readonly onOffline = (): void => this.connection.set('offline');
 
   senderType(senderId: string): CatType | null {
     if (senderId === this.me()?.id) return this.myType();
@@ -98,14 +149,56 @@ export class ChatRealtimeService {
 
   async joinRoom(room: Room, me: Profile): Promise<void> {
     await this.leaveRoom();
+    const gen = ++this.generation;
     this.room.set(room);
     this.me.set(me);
     this.myCatState.set('idle');
     this.partnerAction.set('idle');
-    await Promise.all([this.loadPartner(room), this.loadMessages(room.id)]);
+    this.subscribedOnce = false;
+    this.retryCount = 0;
+    await Promise.all([this.loadPartner(room), this.loadMessages(room.id), this.loadReads(room.id)]);
+    if (gen !== this.generation) return;
 
-    const channel = this.db.channel(`room:${room.room_code}`, {
-      config: { presence: { key: me.id }, broadcast: { self: false } },
+    this.subscribe(room, me);
+    document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('online', this.onOnline);
+    window.addEventListener('offline', this.onOffline);
+    this.scheduleMarkRead();
+  }
+
+  async leaveRoom(): Promise<void> {
+    this.generation++;
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('online', this.onOnline);
+    window.removeEventListener('offline', this.onOffline);
+    for (const t of [
+      this.typingTrailing,
+      this.typingIdle,
+      this.partnerTypingTimer,
+      this.retryTimer,
+      this.markReadTimer,
+    ]) {
+      if (t) clearTimeout(t);
+    }
+    this.typingTrailing = this.typingIdle = this.partnerTypingTimer = this.retryTimer = this.markReadTimer = null;
+    await this.dropChannel();
+    this.messages.set([]);
+    this.hasOlder.set(false);
+    this.partner.set(null);
+    this.partnerReadAt.set(null);
+    this.myReadAt = null;
+    this.room.set(null);
+    this.isPartnerOnline.set(false);
+    this.flights.set([]);
+    this.connection.set('connecting');
+  }
+
+  /** Canal privado `room:<uuid>`: solo los dos miembros pueden escuchar o emitir (RLS en realtime.messages). */
+  private subscribe(room: Room, me: Profile): void {
+    const gen = this.generation;
+    this.connection.set('connecting');
+    const channel = this.db.channel(`room:${room.id}`, {
+      config: { private: true, presence: { key: me.id }, broadcast: { self: false } },
     });
 
     channel
@@ -113,7 +206,7 @@ export class ChatRealtimeService {
       .on('presence', { event: 'sync' }, () => this.syncPresence())
       // ---- Broadcast
       .on('broadcast', { event: 'cat-action' }, ({ payload }) => this.handleBroadcast(payload))
-      // ---- Postgres Changes
+      // ---- Postgres Changes (filtrados además por RLS)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${room.id}` },
@@ -133,35 +226,62 @@ export class ChatRealtimeService {
           void this.loadPartner(updated);
         },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_reads', filter: `room_id=eq.${room.id}` },
+        (p) => this.applyRead(p.new as Readonly<Record<string, unknown>>),
+      )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') void this.trackPresence();
+        if (gen !== this.generation || channel !== this.channel) return;
+        if (status === 'SUBSCRIBED') {
+          this.connection.set('online');
+          this.retryCount = 0;
+          void this.trackPresence();
+          // Tras una reconexión: recuperar lo que llegó mientras no escuchábamos.
+          if (this.subscribedOnce) void this.catchUp();
+          this.subscribedOnce = true;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          this.connection.set(navigator.onLine ? 'connecting' : 'offline');
+          this.scheduleReconnect();
+        }
       });
 
     this.channel = channel;
-    document.addEventListener('visibilitychange', this.onVisibility);
   }
 
-  async leaveRoom(): Promise<void> {
-    document.removeEventListener('visibilitychange', this.onVisibility);
-    for (const t of [this.typingTrailing, this.typingIdle, this.partnerTypingTimer]) {
-      if (t) clearTimeout(t);
-    }
-    this.typingTrailing = this.typingIdle = this.partnerTypingTimer = null;
-    if (this.channel) {
-      const ch = this.channel;
-      this.channel = null;
-      await ch.untrack().catch(() => undefined);
-      await this.db.removeChannel(ch);
-    }
-    this.messages.set([]);
-    this.partner.set(null);
-    this.room.set(null);
-    this.isPartnerOnline.set(false);
-    this.flights.set([]);
+  private scheduleReconnect(): void {
+    if (this.retryTimer) return;
+    const delay = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** this.retryCount);
+    this.retryCount++;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.reconnectNow();
+    }, delay);
+  }
+
+  private reconnectNow(): void {
+    const room = this.room();
+    const me = this.me();
+    if (!room || !me) return;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    const gen = this.generation;
+    void this.dropChannel().then(() => {
+      if (gen === this.generation) this.subscribe(room, me);
+    });
+  }
+
+  private async dropChannel(): Promise<void> {
+    const ch = this.channel;
+    this.channel = null;
+    if (!ch) return;
+    await ch.untrack().catch(() => undefined);
+    await this.db.removeChannel(ch).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ envío
 
+  /** Envío optimista: la burbuja aparece al instante como "enviando…" y se confirma o queda para reintentar. */
   async sendMessage(content: string, isSecret: boolean): Promise<void> {
     const room = this.room();
     const me = this.me();
@@ -170,18 +290,62 @@ export class ChatRealtimeService {
 
     this.stopTyping();
     const emotion = detectEmotion(text);
+    const draft: Message = {
+      id: crypto.randomUUID(),
+      room_id: room.id,
+      sender_id: me.id,
+      content: text,
+      is_secret: isSecret,
+      emotion,
+      sticker_reaction: null,
+      created_at: new Date().toISOString(),
+      status: 'sending',
+    };
+    this.upsertMessage(draft);
+    this.playMessage('me', emotion);
+    await this.deliver(draft);
+  }
+
+  async retryMessage(message: Message): Promise<void> {
+    if (message.status !== 'failed') return;
+    const draft: Message = { ...message, status: 'sending' };
+    this.upsertMessage(draft);
+    await this.deliver(draft);
+  }
+
+  private async deliver(draft: Message): Promise<void> {
+    const gen = this.generation;
     const { data, error } = await this.db
       .from('messages')
-      .insert({ room_id: room.id, sender_id: me.id, content: text, is_secret: isSecret, emotion })
+      .insert({
+        id: draft.id,
+        room_id: draft.room_id,
+        sender_id: draft.sender_id,
+        content: draft.content,
+        is_secret: draft.is_secret,
+        emotion: draft.emotion,
+      })
       .select()
       .single();
-    if (error) throw error;
-
-    this.upsertMessage(SupabaseService.toMessage(data));
-    this.playMessage('me', emotion);
+    if (gen !== this.generation) return;
+    if (!error) {
+      this.upsertMessage(SupabaseService.toMessage(data));
+      return;
+    }
+    // 23505: el intento anterior sí llegó (se perdió la respuesta). Lo traemos tal cual.
+    if (error.code === '23505') {
+      const { data: saved } = await this.db.from('messages').select().eq('id', draft.id).maybeSingle();
+      if (saved && gen === this.generation) {
+        this.upsertMessage(SupabaseService.toMessage(saved));
+        return;
+      }
+    }
+    if (gen === this.generation) this.upsertMessage({ ...draft, status: 'failed' });
+    throw error;
   }
 
   async toggleSticker(message: Message): Promise<void> {
+    if (message.status) return;
     const mine = this.myType();
     const next = message.sticker_reaction === mine ? null : mine;
     this.upsertMessage({ ...message, sticker_reaction: next });
@@ -301,6 +465,7 @@ export class ChatRealtimeService {
     this.clearPartnerTyping();
     this.playMessage('partner', message.emotion);
     if (message.emotion === 'alert') void this.haptic(ImpactStyle.Medium);
+    this.scheduleMarkRead();
   }
 
   private clearPartnerTyping(): void {
@@ -367,16 +532,109 @@ export class ChatRealtimeService {
       .select()
       .eq('room_id', roomId)
       .order('created_at', { ascending: false })
-      .limit(150);
+      .limit(PAGE_SIZE);
     if (error) throw error;
     this.messages.set(data.map((row) => SupabaseService.toMessage(row)).reverse());
+    this.hasOlder.set(data.length === PAGE_SIZE);
+  }
+
+  /** Página anterior (scroll hacia arriba). Devuelve cuántos mensajes se añadieron. */
+  async loadOlder(): Promise<number> {
+    const room = this.room();
+    const oldest = this.messages().find((m) => !m.status);
+    if (!room || !oldest || this.loadingOlder() || !this.hasOlder()) return 0;
+    const gen = this.generation;
+    this.loadingOlder.set(true);
+    try {
+      const { data, error } = await this.db
+        .from('messages')
+        .select()
+        .eq('room_id', room.id)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(PAGE_SIZE);
+      if (error) throw error;
+      if (gen !== this.generation) return 0;
+      const older = data.map((row) => SupabaseService.toMessage(row)).reverse();
+      this.messages.update((list) => [...older, ...list]);
+      this.hasOlder.set(data.length === PAGE_SIZE);
+      return older.length;
+    } finally {
+      this.loadingOlder.set(false);
+    }
+  }
+
+  /** Mensajes que llegaron mientras el canal estaba caído o la app en segundo plano. */
+  private async catchUp(): Promise<void> {
+    const room = this.room();
+    if (!room) return;
+    const gen = this.generation;
+    const confirmed = this.messages().filter((m) => !m.status);
+    const newest = confirmed[confirmed.length - 1]?.created_at;
+    let query = this.db.from('messages').select().eq('room_id', room.id);
+    if (newest) query = query.gt('created_at', newest);
+    const { data, error } = await query.order('created_at', { ascending: true }).limit(CATCH_UP_LIMIT);
+    if (error || gen !== this.generation) return;
+    for (const row of data) this.handleInsert(SupabaseService.toMessage(row));
+    void this.refreshRoom(room.room_code);
+    void this.loadReads(room.id);
+  }
+
+  // ------------------------------------------------------------- "visto"
+
+  private async loadReads(roomId: string): Promise<void> {
+    const { data, error } = await this.db.from('room_reads').select().eq('room_id', roomId);
+    if (error) return;
+    for (const row of data) this.applyRead(row);
+  }
+
+  private applyRead(row: Readonly<Record<string, unknown>>): void {
+    const userId = row['user_id'];
+    const at = row['last_read_at'];
+    if (typeof userId !== 'string' || typeof at !== 'string') return;
+    const iso = toIso(at);
+    if (userId === this.me()?.id) {
+      if (!this.myReadAt || iso > this.myReadAt) this.myReadAt = iso;
+    } else {
+      this.partnerReadAt.update((prev) => (prev && prev > iso ? prev : iso));
+    }
+  }
+
+  /** Marca como leído lo último del compañero, solo si la app está a la vista. */
+  private scheduleMarkRead(): void {
+    if (this.markReadTimer) clearTimeout(this.markReadTimer);
+    this.markReadTimer = setTimeout(() => {
+      this.markReadTimer = null;
+      void this.markRead();
+    }, MARK_READ_DEBOUNCE_MS);
+  }
+
+  private async markRead(): Promise<void> {
+    const room = this.room();
+    const meId = this.me()?.id;
+    if (!room || !meId || document.visibilityState !== 'visible') return;
+    const latest = [...this.messages()].reverse().find((m) => m.sender_id !== meId && !m.status);
+    if (!latest) return;
+    const at = toIso(latest.created_at);
+    if (this.myReadAt && this.myReadAt >= at) return;
+    const { error } = await this.db.rpc('mark_read', { p_room: room.id, p_at: latest.created_at });
+    if (!error) this.myReadAt = at;
+  }
+
+  // ------------------------------------------------------------- asiento
+
+  /** Tu compañero cambió de teléfono: su asiento queda libre para volver a entrar con el código. */
+  async releasePartnerSeat(): Promise<void> {
+    const room = this.room();
+    if (!room) return;
+    this.room.set(await this.session.releasePartnerSeat(room.id));
   }
 
   private upsertMessage(message: Message): void {
     this.messages.update((list) => {
       const idx = list.findIndex((m) => m.id === message.id);
       if (idx === -1) {
-        return [...list, message].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        return [...list, message].sort((a, b) => toIso(a.created_at).localeCompare(toIso(b.created_at)));
       }
       const copy = list.slice();
       copy[idx] = message;
@@ -430,4 +688,10 @@ export class ChatRealtimeService {
   async purr(): Promise<void> {
     await this.haptic(ImpactStyle.Light);
   }
+}
+
+/** Normaliza timestamps de Postgres/JS para poder compararlos como texto. */
+function toIso(value: string): string {
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? value : new Date(t).toISOString();
 }
