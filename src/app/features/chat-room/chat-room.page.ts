@@ -11,6 +11,7 @@ import { InstallButtonComponent } from '../../shared/install-button/install-butt
 
 import { CatStageComponent } from './components/cat-stage/cat-stage.component';
 import { ChatInputComponent, type OutgoingMessage } from './components/chat-input/chat-input.component';
+import { GroupStageComponent } from './components/group-stage/group-stage.component';
 import { MessageBubbleComponent, type ReactionPick } from './components/message-bubble/message-bubble.component';
 
 const LOAD_OLDER_THRESHOLD_PX = 80;
@@ -23,6 +24,7 @@ const PAGING_QUIET_MS = 400;
     IonContent,
     IonFooter,
     CatStageComponent,
+    GroupStageComponent,
     MessageBubbleComponent,
     ChatInputComponent,
     InstallButtonComponent,
@@ -116,7 +118,7 @@ export class ChatRoomPage implements OnInit, OnDestroy {
       const msg =
         err instanceof RoomJoinError
           ? err.reason === 'full'
-            ? 'Esta sala ya tiene dos gatitos 🐾 Si eras tú en otro teléfono, pide que liberen tu lugar.'
+            ? 'Esta sala ya está llena 🐾 Si eras tú en otro teléfono, pide que liberen tu lugar.'
             : 'No encontramos esa sala'
           : 'No pudimos conectar con la sala';
       await this.toast(msg);
@@ -185,6 +187,37 @@ export class ChatRoomPage implements OnInit, OnDestroy {
       await this.toast(`Listo: ${name} puede volver con el código ${this.code().toUpperCase()}`);
     } catch {
       await this.toast('No se pudo liberar su lugar');
+    }
+  }
+
+  /** Manada: el mensaje abre una racha nueva (otro gatito habló antes) → lleva nombre y mini gatito. */
+  protected startsRun(index: number): boolean {
+    const list = this.chat.messages();
+    const current = list[index];
+    if (!current || current.sender_id === this.chat.me()?.id) return false;
+    return index === 0 || list[index - 1].sender_id !== current.sender_id;
+  }
+
+  /** Salir de la Manada: deja de ser miembro y vuelve al menú. */
+  protected async confirmLeaveGroup(): Promise<void> {
+    const name = this.chat.room()?.name || 'la manada';
+    const alert = await this.alerts.create({
+      header: `¿Salir de ${name}?`,
+      message: `Dejarás de recibir sus mensajes. Puedes volver con el código ${this.code().toUpperCase()} si queda lugar.`,
+      cssClass: 'alert-sketch',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        { text: 'Salir', role: 'confirm' },
+      ],
+    });
+    await alert.present();
+    const { role } = await alert.onDidDismiss();
+    if (role !== 'confirm') return;
+    try {
+      await this.chat.leaveGroup();
+      await this.nav.navigateRoot(['/']);
+    } catch {
+      await this.toast('No se pudo salir de la manada');
     }
   }
 

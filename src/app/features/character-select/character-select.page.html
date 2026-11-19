@@ -3,12 +3,43 @@
     <header class="intro">
       <p class="eyebrow">
         <img src="assets/icons/icon-blush-paw.svg" alt="" />
-        chat 1 a 1
+        {{ mode() === 'group' ? 'manada' : 'chat 1 a 1' }}
       </p>
       <h1>Day &amp; Night Sync</h1>
-      <p class="lede">Elige tu gatito, comparte un código de sala y conversen frente a frente.</p>
+      <p class="lede">
+        @if (mode() === 'group') {
+          Elige tu gatito, crea una manada y comparte el código con hasta 15 amigos.
+        } @else {
+          Elige tu gatito, comparte un código de sala y conversen frente a frente.
+        }
+      </p>
       <div class="install-row"><app-install-button /></div>
     </header>
+
+    <div class="mode-switch" role="radiogroup" aria-label="Tipo de sala">
+      <button
+        type="button"
+        role="radio"
+        class="mode-option"
+        [class.active]="mode() === 'duo'"
+        [attr.aria-checked]="mode() === 'duo'"
+        (click)="setMode('duo')"
+      >
+        <span class="mode-title">1 a 1</span>
+        <span class="mode-sub">Nube y Mango</span>
+      </button>
+      <button
+        type="button"
+        role="radio"
+        class="mode-option"
+        [class.active]="mode() === 'group'"
+        [attr.aria-checked]="mode() === 'group'"
+        (click)="setMode('group')"
+      >
+        <span class="mode-title">Manada</span>
+        <span class="mode-sub">hasta 15 gatitos</span>
+      </button>
+    </div>
 
     <div class="picker" role="radiogroup" aria-label="Elige tu gatito">
       @for (cat of cats; track cat) {
@@ -45,9 +76,27 @@
         (keydown.enter)="create()"
       />
 
+      @if (mode() === 'group') {
+        <label class="field-label" for="group-name">Nombre de la manada <span class="optional">(opcional)</span></label>
+        <input
+          id="group-name"
+          class="field-sketch"
+          type="text"
+          maxlength="40"
+          placeholder="Los michis del curso"
+          [value]="groupName()"
+          (input)="onGroupName($event)"
+          (keydown.enter)="create()"
+        />
+      }
+
       <button type="button" class="btn-sketch warm full" [disabled]="!nameValid() || busy() !== null" (click)="create()">
         <img [src]="meta[chosen()].icon" alt="" />
-        {{ busy() === 'create' ? 'Creando sala…' : 'Crear sala nueva' }}
+        @if (busy() === 'create') {
+          {{ mode() === 'group' ? 'Creando manada…' : 'Creando sala…' }}
+        } @else {
+          {{ mode() === 'group' ? 'Crear manada' : 'Crear sala nueva' }}
+        }
       </button>
 
       <div class="divider"><span>o únete con un código</span></div>

@@ -332,3 +332,35 @@
     animation: none;
   }
 }
+
+// ---------- Manada: nombre y color de collar de cada gatito
+.sender {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px 0 3px;
+  color: var(--collar, var(--b-ink-2));
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.sender-cat {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--collar, var(--b-border));
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 20%;
+  background: var(--day-surface);
+}
+
+// Mensajes seguidos del mismo gatito: más juntos
+:host(.group:not(.run-start)) {
+  padding-top: 1px;
+}
+
+// Un toque del color del collar en el filo de las burbujas ajenas
+:host(.group.theirs) .bubble {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--collar, var(--b-border)) 55%, var(--b-border));
+}

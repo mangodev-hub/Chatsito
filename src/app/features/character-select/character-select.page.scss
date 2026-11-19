@@ -57,6 +57,61 @@
   line-height: 1.45;
 }
 
+/* ---------- tipo de sala: 1 a 1 / Manada ---------- */
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: var(--sketch);
+  border-radius: 18px;
+  background: var(--bg-accent-soft);
+}
+
+.mode-option {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 6px;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink-secondary);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+
+  &.active {
+    border-color: var(--border-sketch);
+    background: var(--bg-surface);
+    color: var(--ink-primary);
+    box-shadow: 0 2px 0 var(--border-sketch);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+}
+
+.mode-title {
+  font: 700 16px var(--font-title);
+}
+
+.mode-sub {
+  font-size: 11.5px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.optional {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
 /* ---------- selector de personaje ---------- */
 .picker {
   display: grid;

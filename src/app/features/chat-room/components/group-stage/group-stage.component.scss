@@ -1,0 +1,189 @@
+:host {
+  display: block;
+}
+
+.shelf-wrap {
+  position: relative;
+  padding: 8px 0 4px;
+  background: var(--bg-canvas);
+  border-bottom: var(--sketch);
+  color: var(--ink-primary);
+  transition: background-color 600ms ease, color 600ms ease;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 6px;
+}
+
+.titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-name {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 700 18px var(--font-title);
+}
+
+.group-sub {
+  margin: 1px 0 0;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.online-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #7fc98f;
+  vertical-align: 1px;
+}
+
+.leave-btn {
+  appearance: none;
+  padding: 5px 12px;
+  border: var(--sketch);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  box-shadow: 0 2px 0 var(--border-sketch);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow: none;
+  }
+}
+
+/* ---------- repisa de gatitos (se desliza de lado si son muchos) ---------- */
+.shelf {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 14px 6px;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.cat {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 58px;
+  scroll-snap-align: start;
+  transition: opacity 300ms ease, filter 300ms ease;
+
+  &.asleep {
+    opacity: 0.55;
+    filter: grayscale(0.5);
+  }
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 2.5px solid var(--collar);
+  border-radius: 50%;
+  background: var(--day-surface);
+  box-shadow: 0 2px 0 var(--border-sketch);
+
+  img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center 18%;
+  }
+}
+
+.name {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--collar);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.zzz {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  color: var(--ink-secondary);
+  font: italic 800 13px var(--font-title);
+}
+
+.typing-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  display: flex;
+  gap: 2px;
+  padding: 3px 5px;
+  border: 1.5px solid var(--border-sketch);
+  border-radius: 999px;
+  background: var(--bg-surface);
+
+  i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--collar);
+    animation: hop 900ms ease-in-out infinite;
+
+    &:nth-child(2) { animation-delay: 150ms; }
+    &:nth-child(3) { animation-delay: 300ms; }
+  }
+}
+
+.typing-line {
+  min-height: 16px;
+  margin: 0;
+  padding: 0 14px 2px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@keyframes hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-badge i { animation: none; }
+}

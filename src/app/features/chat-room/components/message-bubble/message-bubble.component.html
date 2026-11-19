@@ -21,6 +21,15 @@
     <img class="sticker" [src]="src" alt="Gatito posado" @stickerDrop />
   }
 
+  @if (showSender() && senderName(); as name) {
+    <span class="sender">
+      @if (senderPng(); as png) {
+        <img class="sender-cat" [src]="png" alt="" />
+      }
+      {{ name }}
+    </span>
+  }
+
   <p class="text" [attr.aria-hidden]="message().is_secret && !revealed()">{{ message().content }}</p>
 
   @if (message().is_secret && !revealed()) {

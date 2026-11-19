@@ -10,12 +10,14 @@ import {
   type PresencePayload,
   type Profile,
   type Room,
+  type RoomMember,
   type ThemeMode,
   type TypingSpeed,
   type Emotion,
   type Reaction,
   type ReactionView,
   CAT_META,
+  collarColor,
   detectEmotion,
   isOneShot,
   catStateForReaction,
@@ -79,11 +81,43 @@ export class ChatRealtimeService {
   /** Reacción encadenada tras un segmento de un solo disparo (p. ej. message → happy). */
   private readonly pending: Record<Side, CatState | null> = { me: null, partner: null };
 
+  // ---- Manada (salas de grupo)
+  /** Miembros de la Manada con su color de collar (vacío en salas 1 a 1). */
+  readonly members = signal<RoomMember[]>([]);
+  /** Ids de los miembros con la app abierta y a la vista. */
+  readonly onlineIds = signal<ReadonlySet<string>>(new Set());
+  /** Ids de los miembros que están escribiendo ahora mismo. */
+  readonly typingIds = signal<ReadonlySet<string>>(new Set());
+  /** Última lectura de cada miembro (servidor, `room_reads`). */
+  private readonly readsByUser = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
   // ---- pulsos de eventos para la UI
   readonly pokeReceived = signal(0);
   readonly flights = signal<Flight[]>([]);
 
   // ---- derivados
+  readonly isGroup = computed(() => this.room()?.kind === 'group');
+  private readonly memberById = computed(() => new Map(this.members().map((m) => [m.profile.id, m])));
+  /** Nombres de quienes escriben (sin mí), para "Nube y Mango están escribiendo…". */
+  readonly typingNames = computed<string[]>(() =>
+    [...this.typingIds()].map((id) => this.memberById().get(id)?.profile.username || 'Un gatito'),
+  );
+  /** Manada: cuántos miembros (sin mí) vieron mi último mensaje. */
+  readonly seenCounts = computed<ReadonlyMap<string, number>>(() => {
+    const map = new Map<string, number>();
+    const meId = this.me()?.id;
+    if (!this.isGroup() || !meId) return map;
+    const last = [...this.messages()].reverse().find((m) => m.sender_id === meId && !m.status);
+    if (!last) return map;
+    const at = toIso(last.created_at);
+    let count = 0;
+    for (const [userId, readAt] of this.readsByUser()) {
+      if (userId !== meId && this.memberById().has(userId) && readAt >= at) count++;
+    }
+    if (count > 0) map.set(last.id, count);
+    return map;
+  });
   readonly partnerCatState = computed<CatState>(() => (this.isPartnerOnline() ? this.partnerAction() : 'sleeping'));
   readonly myType = computed<CatType>(() => this.me()?.avatar_type ?? 'white_cat');
   readonly partnerType = computed<CatType | null>(() => this.partner()?.avatar_type ?? null);
@@ -100,6 +134,7 @@ export class ChatRealtimeService {
     const map = new Map<string, Receipt>();
     let lastConfirmed: Message | null = null;
     let lastSeen: Message | null = null;
+    const group = this.isGroup();
     for (const m of this.messages()) {
       if (m.sender_id !== meId) continue;
       if (m.status) {
@@ -107,7 +142,11 @@ export class ChatRealtimeService {
         continue;
       }
       lastConfirmed = m;
-      if (readAt && toIso(m.created_at) <= readAt) lastSeen = m;
+      if (!group && readAt && toIso(m.created_at) <= readAt) lastSeen = m;
+    }
+    if (group && lastConfirmed) {
+      map.set(lastConfirmed.id, this.seenCounts().has(lastConfirmed.id) ? 'seen' : 'sent');
+      return map;
     }
     if (lastSeen) map.set(lastSeen.id, 'seen');
     if (lastConfirmed && lastConfirmed !== lastSeen) map.set(lastConfirmed.id, 'sent');
@@ -167,7 +206,17 @@ export class ChatRealtimeService {
   senderType(senderId: string): CatType | null {
     if (senderId === this.me()?.id) return this.myType();
     if (senderId === this.partner()?.id) return this.partnerType();
-    return null;
+    return this.memberById().get(senderId)?.profile.avatar_type ?? null;
+  }
+
+  /** Manada: nombre de quien envió el mensaje. */
+  memberName(userId: string): string {
+    return this.memberById().get(userId)?.profile.username || 'Gatito';
+  }
+
+  /** Manada: color del collar de un miembro. */
+  memberColor(userId: string): string {
+    return collarColor(this.memberById().get(userId)?.collarColor ?? 0);
   }
 
   /** Devuelve un token de sesión: solo quien lo tiene puede cerrar esta sesión con `leaveRoom(token)`. */
@@ -180,7 +229,12 @@ export class ChatRealtimeService {
     this.partnerAction.set('idle');
     this.subscribedOnce = false;
     this.retryCount = 0;
-    await Promise.all([this.loadPartner(room), this.loadMessages(room.id), this.loadReads(room.id)]);
+    await Promise.all([
+      this.loadPartner(room),
+      this.loadMembers(room),
+      this.loadMessages(room.id),
+      this.loadReads(room.id),
+    ]);
     if (gen !== this.generation) return gen;
 
     this.subscribe(room, me);
@@ -208,6 +262,12 @@ export class ChatRealtimeService {
       if (t) clearTimeout(t);
     }
     this.typingTrailing = this.typingIdle = this.partnerTypingTimer = this.retryTimer = this.markReadTimer = null;
+    for (const t of this.typingTimers.values()) clearTimeout(t);
+    this.typingTimers.clear();
+    this.members.set([]);
+    this.onlineIds.set(new Set());
+    this.typingIds.set(new Set());
+    this.readsByUser.set(new Map());
     await this.dropChannel();
     this.messages.set([]);
     this.hasOlder.set(false);
@@ -254,6 +314,11 @@ export class ChatRealtimeService {
           this.room.set(updated);
           void this.loadPartner(updated);
         },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_members', filter: `room_id=eq.${room.id}` },
+        () => void this.loadMembers(room),
       )
       .on(
         'postgres_changes',
@@ -469,6 +534,17 @@ export class ChatRealtimeService {
     const event = this.parseEvent(payload);
     if (!event || event.senderId === this.me()?.id) return;
 
+    if (this.isGroup()) {
+      // Manada: "escribiendo" y el llamado de atención (vibra y sacude la pantalla de todos).
+      if (event.type === 'typing') this.setMemberTyping(event.senderId, true);
+      else if (event.type === 'typing-stop') this.setMemberTyping(event.senderId, false);
+      else if (event.type === 'poke') {
+        this.pokeReceived.update((n) => n + 1);
+        void this.haptic(ImpactStyle.Medium);
+      }
+      return;
+    }
+
     switch (event.type) {
       case 'typing':
         if (!isOneShot(this.partnerAction())) this.partnerAction.set('typing');
@@ -496,10 +572,38 @@ export class ChatRealtimeService {
     this.upsertMessage(message);
     if (!isNew || message.sender_id === this.me()?.id) return;
 
+    if (this.isGroup()) {
+      this.setMemberTyping(message.sender_id, false);
+      const type = this.senderType(message.sender_id);
+      if (type) this.sound.collar(type);
+      if (message.emotion === 'alert') void this.haptic(ImpactStyle.Medium);
+      this.scheduleMarkRead();
+      return;
+    }
+
     this.clearPartnerTyping();
     this.playMessage('partner', message.emotion);
     if (message.emotion === 'alert') void this.haptic(ImpactStyle.Medium);
     this.scheduleMarkRead();
+  }
+
+  private setMemberTyping(userId: string, typing: boolean): void {
+    const prev = this.typingTimers.get(userId);
+    if (prev) clearTimeout(prev);
+    this.typingTimers.delete(userId);
+    if (typing) {
+      this.typingTimers.set(
+        userId,
+        setTimeout(() => this.setMemberTyping(userId, false), PARTNER_TYPING_TIMEOUT_MS),
+      );
+    }
+    this.typingIds.update((ids) => {
+      if (ids.has(userId) === typing) return ids;
+      const next = new Set(ids);
+      if (typing) next.add(userId);
+      else next.delete(userId);
+      return next;
+    });
   }
 
   private clearPartnerTyping(): void {
@@ -515,6 +619,19 @@ export class ChatRealtimeService {
     if (!ch || !meId) return;
     const state = ch.presenceState<PresencePayload>();
     const entries = Object.entries(state).filter(([key]) => key !== meId);
+
+    if (this.isGroup()) {
+      const online = new Set(entries.filter(([, metas]) => metas.some((m) => m.visible)).map(([key]) => key));
+      this.onlineIds.set(online);
+      this.isPartnerOnline.set(online.size > 0);
+      // Alguien nuevo apareció antes de que llegara su fila de room_members: recargar la lista.
+      if (entries.some(([key]) => !this.memberById().has(key))) {
+        const room = this.room();
+        if (room) void this.loadMembers(room);
+      }
+      return;
+    }
+
     const partnerMetas = entries.flatMap(([, metas]) => metas);
     const online = partnerMetas.length > 0 && partnerMetas.some((m) => m.visible);
     this.isPartnerOnline.set(online);
@@ -541,7 +658,15 @@ export class ChatRealtimeService {
 
   // ------------------------------------------------------------- helpers
 
+  private async loadMembers(room: Room): Promise<void> {
+    if (room.kind !== 'group') return;
+    const gen = this.generation;
+    const list = await this.session.fetchMembers(room.id);
+    if (gen === this.generation) this.members.set(list);
+  }
+
   private async loadPartner(room: Room): Promise<void> {
+    if (room.kind === 'group') return; // la Manada no tiene "compañero": usa members
     const meId = this.me()?.id;
     const partnerId = room.user_1 === meId ? room.user_2 : room.user_1;
     if (!partnerId) {
@@ -613,6 +738,7 @@ export class ChatRealtimeService {
     if (error || gen !== this.generation) return;
     for (const row of data) this.handleInsert(SupabaseService.toMessage(row));
     void this.refreshRoom(room.room_code);
+    void this.loadMembers(room);
     void this.loadReads(room.id);
     void this.syncReactions(room.id);
   }
@@ -698,6 +824,13 @@ export class ChatRealtimeService {
     const at = row['last_read_at'];
     if (typeof userId !== 'string' || typeof at !== 'string') return;
     const iso = toIso(at);
+    this.readsByUser.update((all) => {
+      const prev = all.get(userId);
+      if (prev && prev >= iso) return all;
+      const next = new Map(all);
+      next.set(userId, iso);
+      return next;
+    });
     if (userId === this.me()?.id) {
       if (!this.myReadAt || iso > this.myReadAt) this.myReadAt = iso;
     } else {
@@ -727,6 +860,13 @@ export class ChatRealtimeService {
   }
 
   // ------------------------------------------------------------- asiento
+
+  /** Salir de la Manada: deja de ser miembro (sus mensajes se conservan). */
+  async leaveGroup(): Promise<void> {
+    const room = this.room();
+    if (!room || room.kind !== 'group') return;
+    await this.session.leaveGroup(room.id);
+  }
 
   /** Tu compañero cambió de teléfono: su asiento queda libre para volver a entrar con el código. */
   async releasePartnerSeat(): Promise<void> {

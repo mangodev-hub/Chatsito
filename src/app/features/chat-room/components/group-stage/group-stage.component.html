@@ -1,0 +1,30 @@
+<section class="shelf-wrap" aria-label="Gatitos de la manada">
+  <div class="title-row">
+    <div class="titles">
+      <h2 class="group-name">{{ roomName() || 'Manada' }}</h2>
+      <p class="group-sub">
+        {{ cats().length }} de {{ maxMembers() }} gatitos · <span class="online-dot"></span>{{ onlineCount() }} en línea
+      </p>
+    </div>
+    <button type="button" class="leave-btn" (click)="leaveGroup.emit()">Salir</button>
+  </div>
+
+  <ul class="shelf">
+    @for (cat of cats(); track cat.id) {
+      <li class="cat" [class.asleep]="!cat.online" [style.--collar]="cat.color">
+        <span class="avatar">
+          <img [src]="cat.png" alt="" />
+          @if (cat.typing) {
+            <span class="typing-badge" aria-hidden="true"><i></i><i></i><i></i></span>
+          } @else if (!cat.online) {
+            <span class="zzz" aria-hidden="true">z</span>
+          }
+        </span>
+        <span class="name">{{ cat.me ? 'tú' : cat.name }}</span>
+        <span class="sr-only">{{ cat.online ? 'en línea' : 'durmiendo' }}</span>
+      </li>
+    }
+  </ul>
+
+  <p class="typing-line" role="status">{{ typingLabel() ?? '' }}</p>
+</section>

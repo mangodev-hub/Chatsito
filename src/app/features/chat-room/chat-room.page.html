@@ -30,6 +30,18 @@
     </button>
   </div>
 
+  @if (chat.isGroup()) {
+  <app-group-stage
+    [members]="chat.members()"
+    [meId]="chat.me()?.id ?? null"
+    [onlineIds]="chat.onlineIds()"
+    [typingIds]="chat.typingIds()"
+    [typingNames]="chat.typingNames()"
+    [roomName]="chat.room()?.name ?? null"
+    [maxMembers]="chat.room()?.max_members ?? 15"
+    (leaveGroup)="confirmLeaveGroup()"
+  />
+  } @else {
   <app-cat-stage
     [myType]="chat.myType()"
     [partnerType]="chat.partnerType()"
@@ -51,6 +63,7 @@
     (partnerMenu)="confirmRelease()"
     (flightDone)="chat.removeFlight($event)"
   />
+  }
 </ion-header>
 
 <ion-content class="chat-content" [scrollEvents]="true" (ionScroll)="onScroll($event)">
@@ -65,7 +78,7 @@
     <button type="button" class="older" [disabled]="chat.loadingOlder()" (click)="loadOlder()">
       {{ chat.loadingOlder() ? 'Buscando recuerdos…' : 'Ver mensajes anteriores' }}
     </button>
-    } @for (m of chat.messages(); track m.id) {
+    } @for (m of chat.messages(); track m.id; let i = $index) {
     <app-message-bubble
       [message]="m"
       [mine]="m.sender_id === chat.me()?.id"
@@ -74,6 +87,11 @@
       [receipt]="chat.receipts().get(m.id) ?? null"
       [myType]="chat.myType()"
       [reactions]="chat.reactionViews().get(m.id) ?? noReactions"
+      [group]="chat.isGroup()"
+      [showSender]="chat.isGroup() && startsRun(i)"
+      [senderName]="chat.isGroup() ? chat.memberName(m.sender_id) : null"
+      [senderColor]="chat.isGroup() ? chat.memberColor(m.sender_id) : null"
+      [seenCount]="chat.seenCounts().get(m.id) ?? 0"
       (react)="onReact($event)"
       (purr)="chat.purr()"
       (retry)="onRetry($event)"
@@ -83,7 +101,11 @@
     <div class="empty">
       <img src="assets/icons/icon-daisy.svg" alt="" />
       <p class="title-serif">Todavía no hay mensajes</p>
+      @if (chat.isGroup()) {
+      <p>Comparte el código {{ code().toUpperCase() }} con tu manada y escribe el primer mensaje.</p>
+      } @else {
       <p>Haz doble toque en el gatito de tu compañero para saludar, o escribe algo bonito.</p>
+      }
     </div>
     } }
   </section>

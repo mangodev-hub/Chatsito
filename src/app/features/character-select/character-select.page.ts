@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, input, si
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 
-import { CAT_META, type CatState, type CatType } from '../../core/models/chat.models';
+import { CAT_META, type CatState, type CatType, type RoomKind } from '../../core/models/chat.models';
 import { RoomJoinError, SessionService } from '../../core/services/session.service';
 import { InstallButtonComponent } from '../../shared/install-button/install-button.component';
 import { CatAvatarComponent } from '../chat-room/components/cat-avatar/cat-avatar.component';
@@ -34,6 +34,9 @@ export class CharacterSelectPage {
   protected readonly chosen = signal<CatType>(this.session.profile()?.avatar_type ?? 'white_cat');
   protected readonly username = signal(this.session.profile()?.username ?? '');
   protected readonly joinCode = signal('');
+  /** 'duo' = chat 1 a 1 · 'group' = Manada (sala de varios gatitos). */
+  protected readonly mode = signal<RoomKind>('duo');
+  protected readonly groupName = signal('');
   protected readonly heroState = signal<CatState>('idle');
   protected readonly busy = signal<'create' | 'join' | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -56,6 +59,15 @@ export class CharacterSelectPage {
   protected choose(type: CatType): void {
     if (this.chosen() !== type) this.chosen.set(type);
     this.heroState.set('happy');
+  }
+
+  protected setMode(mode: RoomKind): void {
+    this.mode.set(mode);
+    this.error.set(null);
+  }
+
+  protected onGroupName(event: Event): void {
+    this.groupName.set((event.target as HTMLInputElement).value.slice(0, 40));
   }
 
   protected onName(event: Event): void {
@@ -97,7 +109,10 @@ export class CharacterSelectPage {
     this.error.set(null);
     try {
       await this.session.saveProfile(this.username().trim(), this.chosen());
-      const room = await this.session.createRoom();
+      const room =
+        this.mode() === 'group'
+          ? await this.session.createGroupRoom(this.groupName())
+          : await this.session.createRoom();
       await this.router.navigate(['/room', room.room_code]);
     } catch {
       this.error.set('No pudimos crear la sala. Revisa tu conexión e inténtalo de nuevo.');
@@ -122,7 +137,7 @@ export class CharacterSelectPage {
       this.error.set(
         err instanceof RoomJoinError
           ? err.reason === 'full'
-            ? 'Esa sala ya tiene a sus dos gatitos.'
+            ? 'Esa sala ya está llena de gatitos.'
             : 'No existe una sala con ese código.'
           : 'No pudimos unirte a la sala. Inténtalo de nuevo.',
       );

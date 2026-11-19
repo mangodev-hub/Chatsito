@@ -60,6 +60,9 @@ const EMOTION_ICON: Readonly<Record<Message['emotion'], string | null>> = {
     '[class.sending]': "message().status === 'sending'",
     '[class.failed]': "message().status === 'failed'",
     '[class.has-reactions]': 'reactions().length > 0',
+    '[class.group]': 'group()',
+    '[class.run-start]': 'showSender()',
+    '[style.--collar]': 'senderColor()',
     '[class.picking]': 'pickerOpen()',
     '(document:pointerdown)': 'onDocumentPointerDown($event)',
     '(document:keydown.escape)': 'closePicker()',
@@ -74,6 +77,14 @@ export class MessageBubbleComponent implements OnDestroy {
   /** Mi gatito: las caritas del selector son las suyas. */
   readonly myType = input<CatType>('white_cat');
   readonly reactions = input<readonly ReactionView[]>([]);
+  /** Manada: la burbuja muestra quién la envió. */
+  readonly group = input(false);
+  readonly senderName = input<string | null>(null);
+  readonly senderColor = input<string | null>(null);
+  /** Primer mensaje de una racha del mismo gatito: lleva nombre y mini gatito. */
+  readonly showSender = input(false);
+  /** Manada: cuántos gatitos vieron este mensaje. */
+  readonly seenCount = input(0);
 
   readonly react = output<Message>();
   readonly purr = output<void>();
@@ -99,7 +110,12 @@ export class MessageBubbleComponent implements OnDestroy {
   protected readonly emotionIcon = computed(() => EMOTION_ICON[this.message().emotion]);
   protected readonly receiptLabel = computed(() => {
     const r = this.receipt();
+    if (r === 'seen' && this.group() && this.seenCount() > 0) return `visto por ${this.seenCount()}`;
     return r ? RECEIPT_LABEL[r] : null;
+  });
+  protected readonly senderPng = computed(() => {
+    const t = this.senderType();
+    return t ? CAT_META[t].png : null;
   });
   protected readonly cloudOptions: AnimationOptions = {
     path: 'assets/lottie/secret-cloud.json',
