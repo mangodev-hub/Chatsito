@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { type CatType, type Profile, type Room, isCatType } from '../models/chat.models';
+import { type CatType, type Profile, type Room, type RoomMember, isCatType } from '../models/chat.models';
 
 import { SupabaseService } from './supabase.service';
 
@@ -69,6 +69,52 @@ export class SessionService {
       if (error.code !== '23505') throw error; // 23505 = código repetido, reintentar
     }
     throw new Error('No se pudo generar un código de sala único');
+  }
+
+  /** Crea una Manada (sala de grupo). Quien la crea entra como primer miembro. */
+  async createGroupRoom(name?: string): Promise<Room> {
+    await this.supabase.userId();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data, error } = await this.db.rpc('create_group_room', {
+        p_code: this.generateCode(),
+        p_name: name?.trim() || null,
+      });
+      if (!error) return SupabaseService.toRoom(data);
+      if (error.code !== '23505') throw error; // 23505 = código repetido, reintentar
+    }
+    throw new Error('No se pudo generar un código de sala único');
+  }
+
+  /** Miembros de una Manada con su perfil y color de collar, en orden de llegada. */
+  async fetchMembers(roomId: string): Promise<RoomMember[]> {
+    const { data: rows, error } = await this.db
+      .from('room_members')
+      .select('user_id, collar_color, joined_at')
+      .eq('room_id', roomId)
+      .order('joined_at');
+    if (error) throw error;
+    if (!rows.length) return [];
+
+    const { data: profiles, error: profileError } = await this.db
+      .from('profiles')
+      .select()
+      .in(
+        'id',
+        rows.map((r) => r.user_id),
+      );
+    if (profileError) throw profileError;
+    const byId = new Map(profiles.map((p) => [p.id, SupabaseService.toProfile(p)]));
+
+    return rows.flatMap((r) => {
+      const profile = byId.get(r.user_id);
+      return profile ? [{ profile, collarColor: r.collar_color, joinedAt: r.joined_at }] : [];
+    });
+  }
+
+  /** Sale de la Manada (sus mensajes se conservan). */
+  async leaveGroup(roomId: string): Promise<void> {
+    const { error } = await this.db.rpc('leave_group', { p_room: roomId });
+    if (error) throw error;
   }
 
   /** Entra a la sala: asiento libre, asiento liberado por el compañero o el tuyo de antes. */

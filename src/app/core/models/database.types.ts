@@ -1,5 +1,3 @@
-// Generado con Supabase MCP (generate_typescript_types) — proyecto "Chatsito".
-// + migración 20261118120000_two_seat_rooms_auth_rls (room_reads, released_user, RPC).
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
@@ -8,6 +6,27 @@ export type Database = {
   };
   public: {
     Tables: {
+      room_members: {
+        Row: {
+          room_id: string;
+          user_id: string;
+          collar_color: number;
+          joined_at: string;
+        };
+        Insert: {
+          room_id: string;
+          user_id: string;
+          collar_color?: number;
+          joined_at?: string;
+        };
+        Update: {
+          room_id?: string;
+          user_id?: string;
+          collar_color?: number;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
       messages: {
         Row: {
           content: string;
@@ -103,6 +122,9 @@ export type Database = {
           room_code: string;
           user_1: string | null;
           user_2: string | null;
+          kind: string;
+          name: string | null;
+          max_members: number;
         };
         Insert: {
           created_at?: string;
@@ -111,6 +133,9 @@ export type Database = {
           room_code: string;
           user_1?: string | null;
           user_2?: string | null;
+          kind?: string;
+          name?: string | null;
+          max_members?: number;
         };
         Update: {
           created_at?: string;
@@ -119,6 +144,9 @@ export type Database = {
           room_code?: string;
           user_1?: string | null;
           user_2?: string | null;
+          kind?: string;
+          name?: string | null;
+          max_members?: number;
         };
         Relationships: [
           {
@@ -147,6 +175,14 @@ export type Database = {
       release_partner_seat: {
         Args: { p_room: string };
         Returns: Database['public']['Tables']['rooms']['Row'];
+      };
+      create_group_room: {
+        Args: { p_code: string; p_name?: string | null };
+        Returns: Database['public']['Tables']['rooms']['Row'];
+      };
+      leave_group: {
+        Args: { p_room: string };
+        Returns: undefined;
       };
       mark_read: {
         Args: { p_room: string; p_at: string };

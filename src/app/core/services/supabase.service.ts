@@ -54,6 +54,9 @@ export class SupabaseService {
     return {
       id: str(row['id']),
       room_code: str(row['room_code']),
+      kind: row['kind'] === 'group' ? 'group' : 'duo',
+      name: strOrNull(row['name']),
+      max_members: typeof row['max_members'] === 'number' ? row['max_members'] : 2,
       user_1: strOrNull(row['user_1']),
       user_2: strOrNull(row['user_2']),
       released_user: strOrNull(row['released_user']),

@@ -11,14 +11,51 @@ export interface Profile {
   created_at: string;
 }
 
+export type RoomKind = 'duo' | 'group';
+
 export interface Room {
   id: string;
   room_code: string;
+  /** 'duo' = chat 1 a 1 (asientos user_1 / user_2) · 'group' = Manada (miembros en room_members). */
+  kind: RoomKind;
+  /** Nombre opcional de la Manada. */
+  name: string | null;
+  max_members: number;
   user_1: string | null;
   user_2: string | null;
   /** Compañero cuyo asiento fue liberado (cambió de teléfono): puede reclamarlo con el código. */
   released_user: string | null;
   created_at: string;
+}
+
+/** Miembro de una Manada: perfil + color de collar asignado al entrar. */
+export interface RoomMember {
+  profile: Profile;
+  collarColor: number;
+  joinedAt: string;
+}
+
+/** Paleta de collares para identificar a cada gatito en la Manada (índice = room_members.collar_color). */
+export const COLLAR_COLORS: readonly string[] = [
+  '#e8879c', // rosa
+  '#5fb89a', // menta
+  '#9b86d6', // lila
+  '#5aa6d6', // celeste
+  '#e9a06a', // durazno
+  '#e06c5f', // coral
+  '#c9a23f', // mostaza
+  '#7aa85a', // oliva
+  '#d77fc4', // fucsia
+  '#4fa3a5', // turquesa
+  '#b98a6a', // caramelo
+  '#7d8fd6', // azul lavanda
+  '#d6a35a', // miel
+  '#a6729c', // ciruela
+  '#6fb3c9', // cielo
+];
+
+export function collarColor(index: number): string {
+  return COLLAR_COLORS[((index % COLLAR_COLORS.length) + COLLAR_COLORS.length) % COLLAR_COLORS.length];
 }
 
 export interface Message {
