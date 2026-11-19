@@ -3,6 +3,8 @@ import { SwUpdate, type VersionReadyEvent } from '@angular/service-worker';
 import { IonApp, IonRouterOutlet, ToastController } from '@ionic/angular';
 import { filter } from 'rxjs';
 
+import { SoundService } from './core/services/sound.service';
+
 const UPDATE_CHECK_MS = 30 * 60 * 1000;
 
 @Component({
@@ -13,6 +15,8 @@ const UPDATE_CHECK_MS = 30 * 60 * 1000;
 export class AppComponent {
   private readonly updates = inject(SwUpdate);
   private readonly toasts = inject(ToastController);
+  /** Se crea al arrancar para que cualquier toque (también en la pantalla de inicio) active el audio. */
+  protected readonly sound = inject(SoundService);
 
   constructor() {
     if (!this.updates.isEnabled) return;

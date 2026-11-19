@@ -9,17 +9,17 @@ export class SoundService {
   private ctx: AudioContext | null = null;
 
   constructor() {
-    // Chrome en Android no deja sonar audio hasta un gesto del usuario: lo "despertamos" en el primer toque,
-    // así el primer mensaje que llega ya suena.
+    // Chrome solo deja sonar audio tras un gesto real. En pantallas táctiles el gesto válido es al LEVANTAR
+    // el dedo (pointerup / touchend / click), no pointerdown. Se escucha siempre: si Android suspende el audio
+    // al pasar a segundo plano, el siguiente toque lo reactiva y los mensajes que llegan vuelven a sonar.
     const unlock = (): void => {
       if (!this.enabled() || typeof AudioContext === 'undefined') return;
       this.ctx ??= new AudioContext();
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
-      document.removeEventListener('pointerdown', unlock);
-      document.removeEventListener('keydown', unlock);
+      if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
     };
-    document.addEventListener('pointerdown', unlock);
-    document.addEventListener('keydown', unlock);
+    for (const type of ['pointerup', 'touchend', 'click', 'keydown'] as const) {
+      document.addEventListener(type, unlock, { passive: true, capture: true });
+    }
   }
 
   /** Sonido del collar del gatito: cascabel para Cascabel, pétalos para Margarita. */
@@ -30,6 +30,8 @@ export class SoundService {
 
   toggle(): void {
     this.enabled.update((v) => !v);
+    // El toque en el botón ya es un gesto válido: aprovecharlo para activar el audio.
+    if (this.enabled()) this.context();
     try {
       localStorage.setItem(STORAGE_KEY, this.enabled() ? '1' : '0');
     } catch {
