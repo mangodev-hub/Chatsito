@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'day-night-sync',
+  appId: 'app.daynight.chat',
+  appName: 'Day & Night',
   webDir: 'www'
 };
 

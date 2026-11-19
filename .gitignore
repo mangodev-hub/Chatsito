@@ -74,3 +74,7 @@ Thumbs.db
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Firebase
+.firebase/
+firebase-debug.log
