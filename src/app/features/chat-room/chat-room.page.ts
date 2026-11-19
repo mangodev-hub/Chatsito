@@ -7,6 +7,7 @@ import { CAT_META, type Message } from '../../core/models/chat.models';
 import { ChatRealtimeService } from '../../core/services/chat-realtime.service';
 import { RoomJoinError, SessionService } from '../../core/services/session.service';
 import { SoundService } from '../../core/services/sound.service';
+import { InstallButtonComponent } from '../../shared/install-button/install-button.component';
 
 import { CatStageComponent } from './components/cat-stage/cat-stage.component';
 import { ChatInputComponent, type OutgoingMessage } from './components/chat-input/chat-input.component';
@@ -17,7 +18,15 @@ const PAGING_QUIET_MS = 400;
 
 @Component({
   selector: 'app-chat-room',
-  imports: [IonHeader, IonContent, IonFooter, CatStageComponent, MessageBubbleComponent, ChatInputComponent],
+  imports: [
+    IonHeader,
+    IonContent,
+    IonFooter,
+    CatStageComponent,
+    MessageBubbleComponent,
+    ChatInputComponent,
+    InstallButtonComponent,
+  ],
   animations: [screenShake],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-room.page.html',
