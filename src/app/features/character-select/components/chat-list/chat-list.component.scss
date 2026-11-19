@@ -81,9 +81,6 @@
   overflow: hidden;
   animation: item-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
 
-  &.unread {
-    background: var(--bg-accent-soft);
-  }
 }
 
 .chat-open {
@@ -159,22 +156,8 @@
   }
 }
 
-.chat-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.chat-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
 .chat-name {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -191,45 +174,6 @@
   font-size: 10.5px;
   font-weight: 800;
   color: var(--ink-secondary);
-}
-
-.chat-time {
-  flex: none;
-  margin-left: auto;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--ink-secondary);
-}
-
-.chat-preview {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-secondary);
-
-  .unread & {
-    color: var(--ink-primary);
-    font-weight: 800;
-  }
-}
-
-.badge {
-  flex: none;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--border-sketch);
-  border-radius: 999px;
-  background: var(--paw-pink, #ffb7c5);
-  color: #3b2e2a;
-  font-size: 11px;
-  font-weight: 800;
 }
 
 .chat-more {

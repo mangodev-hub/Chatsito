@@ -54,29 +54,7 @@ export class ChatListComponent implements OnInit, OnDestroy {
 
   protected title(room: RoomSummary): string {
     if (room.kind === 'group') return room.name || 'Manada';
-    return room.partnerName ?? 'Esperando a alguien…';
-  }
-
-  protected subtitle(room: RoomSummary): string {
-    if (!room.lastAt) {
-      return room.kind === 'duo' && !room.partnerName ? `Comparte el código ${room.code}` : 'Sin mensajes todavía';
-    }
-    const who = room.lastFromMe ? 'Tú: ' : '';
-    return who + (room.lastIsSecret ? '✦ mensaje secreto' : (room.lastContent ?? ''));
-  }
-
-  /** "10:42", "ayer" o "17/11". */
-  protected when(room: RoomSummary): string {
-    const iso = room.lastAt ?? room.createdAt;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const same = (a: Date, b: Date): boolean => a.toDateString() === b.toDateString();
-    if (same(d, today)) return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-    if (same(d, yesterday)) return 'ayer';
-    return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit' });
+    return room.partnerName ?? `Sala ${room.code}`;
   }
 
   protected avatars(room: RoomSummary): string[] {

@@ -25,7 +25,7 @@
 
     <ul class="chat-items">
       @for (room of rooms(); track room.roomId) {
-        <li class="chat-item" [class.unread]="room.unread > 0" [class.group]="room.kind === 'group'">
+        <li class="chat-item" [class.group]="room.kind === 'group'">
           <button type="button" class="chat-open" (click)="open(room)">
             <span class="avatars" [class.stack]="avatars(room).length > 1" aria-hidden="true">
               @for (src of avatars(room); track $index) {
@@ -34,23 +34,10 @@
                 <span class="avatar-empty"><img src="assets/icons/icon-blush-paw.svg" alt="" /></span>
               }
             </span>
-            <span class="chat-text">
-              <span class="chat-line">
-                <span class="chat-name">{{ title(room) }}</span>
-                @if (room.kind === 'group') {
-                  <span class="chip">Manada · {{ room.memberCount }}</span>
-                }
-                <time class="chat-time">{{ when(room) }}</time>
-              </span>
-              <span class="chat-line">
-                <span class="chat-preview">{{ subtitle(room) }}</span>
-                @if (room.unread > 0) {
-                  <span class="badge" [attr.aria-label]="room.unread + ' sin leer'">{{
-                    room.unread > 99 ? '99+' : room.unread
-                  }}</span>
-                }
-              </span>
-            </span>
+            <span class="chat-name">{{ title(room) }}</span>
+            @if (room.kind === 'group') {
+              <span class="chip">Manada · {{ room.memberCount }}</span>
+            }
           </button>
           <button
             type="button"
