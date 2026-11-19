@@ -147,7 +147,8 @@ export class ChatRealtimeService {
     return null;
   }
 
-  async joinRoom(room: Room, me: Profile): Promise<void> {
+  /** Devuelve un token de sesión: solo quien lo tiene puede cerrar esta sesión con `leaveRoom(token)`. */
+  async joinRoom(room: Room, me: Profile): Promise<number> {
     await this.leaveRoom();
     const gen = ++this.generation;
     this.room.set(room);
@@ -157,16 +158,19 @@ export class ChatRealtimeService {
     this.subscribedOnce = false;
     this.retryCount = 0;
     await Promise.all([this.loadPartner(room), this.loadMessages(room.id), this.loadReads(room.id)]);
-    if (gen !== this.generation) return;
+    if (gen !== this.generation) return gen;
 
     this.subscribe(room, me);
     document.addEventListener('visibilitychange', this.onVisibility);
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
     this.scheduleMarkRead();
+    return gen;
   }
 
-  async leaveRoom(): Promise<void> {
+  /** Con `token`, solo cierra si esa sesión sigue activa (una página vieja no cierra la de una nueva). */
+  async leaveRoom(token?: number): Promise<void> {
+    if (token !== undefined && token !== this.generation) return;
     this.generation++;
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('online', this.onOnline);

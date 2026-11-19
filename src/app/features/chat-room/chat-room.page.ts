@@ -1,7 +1,6 @@
 import type { OnDestroy, OnInit } from '@angular/core';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, viewChild } from '@angular/core';
-import { Router } from '@angular/router';
-import { AlertController, IonContent, IonFooter, IonHeader, ToastController } from '@ionic/angular';
+import { AlertController, IonContent, IonFooter, IonHeader, NavController, ToastController } from '@ionic/angular';
 
 import { screenShake } from '../../core/models/animations';
 import type { Message } from '../../core/models/chat.models';
@@ -36,7 +35,7 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   protected readonly chat = inject(ChatRealtimeService);
   protected readonly sound = inject(SoundService);
   private readonly session = inject(SessionService);
-  private readonly router = inject(Router);
+  private readonly nav = inject(NavController);
   private readonly toasts = inject(ToastController);
   private readonly alerts = inject(AlertController);
 
@@ -71,6 +70,8 @@ export class ChatRoomPage implements OnInit, OnDestroy {
 
   private lastBottomId: string | null = null;
   private pagingQuietUntil = 0;
+  /** Token de la sesión de chat que abrió esta página. */
+  private chatToken: number | null = null;
 
   constructor() {
     // Solo baja al final cuando llega un mensaje nuevo abajo (no al cargar los anteriores arriba).
@@ -92,11 +93,11 @@ export class ChatRoomPage implements OnInit, OnDestroy {
     try {
       const me = await this.session.currentProfile();
       if (!me) {
-        await this.router.navigate(['/'], { queryParams: { code: this.code() } });
+        await this.nav.navigateRoot(['/'], { queryParams: { code: this.code() } });
         return;
       }
       const room = await this.session.joinRoom(this.code());
-      await this.chat.joinRoom(room, me);
+      this.chatToken = await this.chat.joinRoom(room, me);
       this.ready.set(true);
     } catch (err) {
       const msg =
@@ -106,12 +107,12 @@ export class ChatRoomPage implements OnInit, OnDestroy {
             : 'No encontramos esa sala'
           : 'No pudimos conectar con la sala';
       await this.toast(msg);
-      await this.router.navigate(['/']);
+      await this.nav.navigateRoot(['/']);
     }
   }
 
   ngOnDestroy(): void {
-    void this.chat.leaveRoom();
+    if (this.chatToken !== null) void this.chat.leaveRoom(this.chatToken);
   }
 
   protected async onSend(msg: OutgoingMessage): Promise<void> {
@@ -189,7 +190,8 @@ export class ChatRoomPage implements OnInit, OnDestroy {
   }
 
   protected async leave(): Promise<void> {
-    await this.router.navigate(['/']);
+    // Raíz nueva: la página de sala se destruye y la próxima entrada empieza limpia.
+    await this.nav.navigateRoot(['/']);
   }
 
   private async toast(message: string): Promise<void> {
