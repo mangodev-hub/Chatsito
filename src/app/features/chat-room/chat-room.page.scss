@@ -86,6 +86,8 @@ ion-header {
     100deg,
     var(--day-canvas) 0%,
     var(--day-canvas) calc(var(--eclipse-day) - 25%),
+    color-mix(in oklch, var(--day-canvas) 55%, var(--dusk)) calc(var(--eclipse-day) - 8%),
+    color-mix(in oklch, var(--night-canvas) 55%, var(--dusk)) calc(var(--eclipse-day) + 8%),
     var(--night-canvas) calc(var(--eclipse-day) + 25%),
     var(--night-canvas) 100%
   );

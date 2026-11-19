@@ -31,8 +31,9 @@
 :host(.eclipse.from-black) {
   --b-bg: var(--night-surface);
   --b-ink: var(--night-ink);
-  --b-ink-2: var(--gold);
-  --b-border: var(--gold);
+  --b-ink-2: var(--gold-soft);
+  --b-border: color-mix(in srgb, var(--gold) 35%, var(--night-surface));
+  --b-shadow: color-mix(in srgb, var(--gold) 15%, var(--night-canvas));
 }
 
 .bubble {
@@ -43,7 +44,7 @@
   border-radius: var(--radius-bubble);
   background: var(--b-bg);
   color: var(--b-ink);
-  box-shadow: 0 3px 0 var(--b-border);
+  box-shadow: 0 3px 0 var(--b-shadow, var(--b-border));
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

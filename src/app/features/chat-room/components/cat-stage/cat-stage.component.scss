@@ -11,7 +11,16 @@
   gap: 8px;
   padding: 10px 14px 14px;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--left-canvas) 0%, var(--left-canvas) 30%, var(--right-canvas) 70%, var(--right-canvas) 100%);
+  background: linear-gradient(90deg, var(--left-canvas), var(--right-canvas)); // respaldo
+  background: linear-gradient(
+    90deg,
+    var(--left-canvas) 0%,
+    var(--left-canvas) 26%,
+    color-mix(in oklch, var(--left-canvas) 55%, var(--dusk)) 42%,
+    color-mix(in oklch, var(--right-canvas) 55%, var(--dusk)) 58%,
+    var(--right-canvas) 74%,
+    var(--right-canvas) 100%
+  );
   border-bottom: var(--sketch);
   transition: background 600ms ease;
 

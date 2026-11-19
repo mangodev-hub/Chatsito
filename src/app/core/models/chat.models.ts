@@ -91,7 +91,7 @@ export const CAT_META: Readonly<
   Record<CatType, { name: string; nickname: string; theme: 'day' | 'night'; png: string; lottie: string; icon: string }>
 > = {
   white_cat: {
-    name: 'Margarita',
+    name: 'Nube',
     nickname: 'Gatito Blanco',
     theme: 'day',
     png: 'assets/cats/white_cat.png',
@@ -99,7 +99,7 @@ export const CAT_META: Readonly<
     icon: 'assets/icons/icon-daisy.svg',
   },
   black_cat: {
-    name: 'Cascabel',
+    name: 'Mango',
     nickname: 'Gatito Negro',
     theme: 'night',
     png: 'assets/cats/black_cat.png',
